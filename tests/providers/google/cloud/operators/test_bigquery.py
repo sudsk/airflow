@@ -1062,6 +1062,43 @@ class TestBigQueryGetDataOperator:
             operator.execute_complete(context=None, event={"status": "success", "records": [20]})
         mock_log_info.assert_called_with("Total extracted rows: %s", 1)
 
+    @pytest.mark.db_test
+    @mock.patch("airflow.providers.google.cloud.operators.bigquery.BigQueryHook")
+    def test_encryption_configuration(self, mock_hook, create_task_instance_of_operator):
+        encryption_configuration = {
+            "kmsKeyName": "projects/PROJECT/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY",
+        }
+        mock_hook.return_value.project_id = TEST_JOB_PROJECT_ID
+        ti = create_task_instance_of_operator(
+            BigQueryGetDataOperator,
+            dag_id="dag_id",
+            task_id="get_data_from_bq",
+            dataset_id=TEST_DATASET,
+            table_id=TEST_TABLE_ID,
+            job_project_id=TEST_JOB_PROJECT_ID,
+            max_results=100,
+            deferrable=True,
+            encryption_configuration=encryption_configuration,
+            use_legacy_sql=False,
+        )
+
+        with pytest.raises(TaskDeferred):
+            ti.task.execute(MagicMock())
+
+        mock_hook.return_value.insert_job.assert_called_with(
+            configuration={
+                "query": {
+                    "query": f"select * from `{TEST_JOB_PROJECT_ID}.{TEST_DATASET}.{TEST_TABLE_ID}` limit 100",
+                    "useLegacySql": False,
+                    "destinationEncryptionConfiguration": encryption_configuration,
+                }
+            },
+            location=None,
+            project_id=TEST_JOB_PROJECT_ID,
+            job_id="",
+            nowait=True,
+        )
+
 
 class TestBigQueryTableDeleteOperator:
     @mock.patch("airflow.providers.google.cloud.operators.bigquery.BigQueryHook")
@@ -2137,6 +2174,36 @@ class TestBigQueryIntervalCheckOperator:
             nowait=True,
         )
 
+    @pytest.mark.db_test
+    @mock.patch("airflow.providers.google.cloud.operators.bigquery.BigQueryHook")
+    def test_encryption_configuration(self, mock_hook, create_task_instance_of_operator):
+        encryption_configuration = {
+            "kmsKeyName": "projects/PROJECT/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY",
+        }
+        ti = create_task_instance_of_operator(
+            BigQueryIntervalCheckOperator,
+            dag_id="dag_id",
+            task_id="bq_interval_check_operator_encryption_configuration",
+            table="test_table",
+            metrics_thresholds={"COUNT(*)": 1.5},
+            location=TEST_DATASET_LOCATION,
+            deferrable=True,
+            encryption_configuration=encryption_configuration,
+        )
+
+        mock_hook.return_value.project_id = TEST_GCP_PROJECT_ID
+        mock_hook.return_value.insert_job.return_value = MagicMock(job_id="123456_hash", error_result=False)
+
+        with pytest.raises(TaskDeferred):
+            ti.task.execute(MagicMock())
+
+        assert (
+            mock_hook.return_value.insert_job.call_args.kwargs["configuration"]["query"][
+                "destinationEncryptionConfiguration"
+            ]
+            == encryption_configuration
+        )
+
 
 class TestBigQueryCheckOperator:
     @pytest.mark.db_test
@@ -2425,6 +2492,42 @@ class TestBigQueryValueCheckOperator:
                 context=None, event={"status": "error", "message": "test failure message"}
             )
 
+    @pytest.mark.db_test
+    @mock.patch("airflow.providers.google.cloud.operators.bigquery.BigQueryHook")
+    def test_encryption_configuration(self, mock_hook, create_task_instance_of_operator):
+        encryption_configuration = {
+            "kmsKeyName": "projects/PROJECT/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY",
+        }
+        ti = create_task_instance_of_operator(
+            BigQueryValueCheckOperator,
+            dag_id="dag_id",
+            task_id="check_value",
+            sql="SELECT COUNT(*) FROM Any",
+            pass_value=2,
+            use_legacy_sql=True,
+            deferrable=True,
+            encryption_configuration=encryption_configuration,
+        )
+        mock_hook.return_value.project_id = TEST_GCP_PROJECT_ID
+        mock_hook.return_value.insert_job.return_value = MagicMock(job_id="123456_hash", error_result=False)
+
+        with pytest.raises(TaskDeferred):
+            ti.task.execute(MagicMock())
+
+        mock_hook.return_value.insert_job.assert_called_with(
+            configuration={
+                "query": {
+                    "query": "SELECT COUNT(*) FROM Any",
+                    "useLegacySql": True,
+                    "destinationEncryptionConfiguration": encryption_configuration,
+                }
+            },
+            project_id=TEST_GCP_PROJECT_ID,
+            location=None,
+            job_id=mock.ANY,
+            nowait=True,
+        )
+
 
 @pytest.mark.db_test
 class TestBigQueryColumnCheckOperator:
@@ -2494,6 +2597,38 @@ class TestBigQueryColumnCheckOperator:
         )
         with pytest.raises(AirflowException):
             ti.task.execute(MagicMock())
+
+    @mock.patch("airflow.providers.google.cloud.operators.bigquery.BigQueryHook")
+    @mock.patch("airflow.providers.google.cloud.hooks.bigquery.BigQueryJob")
+    def test_encryption_configuration(self, mock_job, mock_hook, create_task_instance_of_operator):
+        encryption_configuration = {
+            "kmsKeyName": "projects/PROJECT/locations/LOCATION/keyRings/KEY_RING/cryptoKeys/KEY",
+        }
+        mock_job.result.return_value.to_dataframe.return_value = pd.DataFrame(
+            {"col_name": ["col1"], "check_type": ["min"], "check_result": [0]}
+        )
+        mock_hook.return_value.insert_job.return_value = mock_job
+        mock_hook.return_value.project_id = TEST_GCP_PROJECT_ID
+
+        ti = create_task_instance_of_operator(
+            BigQueryColumnCheckOperator,
+            dag_id="dag_id",
+            task_id="check_column_encryption",
+            table=TEST_TABLE_ID,
+            use_legacy_sql=False,
+            column_mapping={
+                "col1": {"min": {"equal_to": 0}},
+            },
+            encryption_configuration=encryption_configuration,
+        )
+        ti.task.execute(MagicMock())
+
+        assert (
+            mock_hook.return_value.insert_job.call_args.kwargs["configuration"]["query"][
+                "destinationEncryptionConfiguration"
+            ]
+            == encryption_configuration
+        )
 
 
 class TestBigQueryTableCheckOperator:
