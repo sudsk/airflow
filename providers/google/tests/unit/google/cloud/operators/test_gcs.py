@@ -33,6 +33,7 @@ from airflow.providers.common.compat.openlineage.facet import (
     LifecycleStateChangeDatasetFacet,
     PreviousIdentifier,
 )
+from airflow.providers.google.common.links.storage import StorageLink
 from airflow.providers.google.cloud.operators.gcs import (
     GCSBucketAddIamBindingOperator,
     GCSBucketCreateAclEntryOperator,
@@ -1161,6 +1162,99 @@ class TestGCSDeleteBucketOperator:
         mock_hook.return_value.delete_bucket.assert_called_once_with(
             bucket_name=TEST_BUCKET, force=True, user_project=None
         )
+
+
+
+
+class TestGCSBucketAddIamBindingOperator:
+    @mock.patch("airflow.providers.google.cloud.operators.gcs.StorageLink.persist")
+    @mock.patch("airflow.providers.google.cloud.operators.gcs.GCSHook")
+    def test_execute_single_member(self, mock_hook, mock_persist):
+        operator = GCSBucketAddIamBindingOperator(
+            task_id=TASK_ID,
+            bucket_name=TEST_BUCKET,
+            role="roles/storage.objectViewer",
+            member="user:test@example.com",
+            user_project="test-user-project",
+            gcp_conn_id="google_cloud_default",
+            impersonation_chain=IMPERSONATION_CHAIN,
+        )
+        context = mock.MagicMock()
+        operator.execute(context=context)
+
+        mock_hook.assert_called_once_with(
+            gcp_conn_id="google_cloud_default",
+            impersonation_chain=IMPERSONATION_CHAIN,
+        )
+        mock_persist.assert_called_once_with(
+            context=context,
+            uri=TEST_BUCKET,
+            project_id=mock_hook.return_value.project_id,
+        )
+        mock_hook.return_value.add_bucket_iam_binding.assert_called_once_with(
+            bucket_name=TEST_BUCKET,
+            role="roles/storage.objectViewer",
+            member="user:test@example.com",
+            members=None,
+            user_project="test-user-project",
+        )
+
+    @mock.patch("airflow.providers.google.cloud.operators.gcs.StorageLink.persist")
+    @mock.patch("airflow.providers.google.cloud.operators.gcs.GCSHook")
+    def test_execute_multiple_members_with_bucket_alias(self, mock_hook, mock_persist):
+        members = ["user:member1@example.com", "user:member2@example.com"]
+        operator = GCSBucketAddIamBindingOperator(
+            task_id=TASK_ID,
+            bucket=TEST_BUCKET,
+            role="roles/storage.admin",
+            members=members,
+        )
+        context = mock.MagicMock()
+        operator.execute(context=context)
+
+        mock_hook.assert_called_once_with(
+            gcp_conn_id="google_cloud_default",
+            impersonation_chain=None,
+        )
+        mock_persist.assert_called_once_with(
+            context=context,
+            uri=TEST_BUCKET,
+            project_id=mock_hook.return_value.project_id,
+        )
+        mock_hook.return_value.add_bucket_iam_binding.assert_called_once_with(
+            bucket_name=TEST_BUCKET,
+            role="roles/storage.admin",
+            member=None,
+            members=members,
+            user_project=None,
+        )
+
+    def test_template_fields(self):
+        operator = GCSBucketAddIamBindingOperator(
+            task_id=TASK_ID,
+            bucket_name=TEST_BUCKET,
+            role="roles/storage.admin",
+            member="user:test@example.com",
+        )
+        assert operator.template_fields == (
+            "bucket_name",
+            "bucket",
+            "role",
+            "member",
+            "members",
+            "user_project",
+            "gcp_conn_id",
+            "impersonation_chain",
+        )
+
+    def test_operator_extra_links(self):
+        operator = GCSBucketAddIamBindingOperator(
+            task_id=TASK_ID,
+            bucket_name=TEST_BUCKET,
+            role="roles/storage.admin",
+            member="user:test@example.com",
+        )
+        assert any(isinstance(link, StorageLink) for link in operator.operator_extra_links)
 
 
 class TestGoogleCloudStorageSync:

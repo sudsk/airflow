@@ -1291,3 +1291,78 @@ class GCSSynchronizeBucketsOperator(GoogleCloudBaseOperator):
         if gcs_object and gcs_object[-1] == "/":
             gcs_object = gcs_object[:-1]
         return f"{gcs_bucket}/{gcs_object}" if gcs_object else gcs_bucket
+
+
+class GCSBucketAddIamBindingOperator(GoogleCloudBaseOperator):
+    """
+    Adds IAM role binding to the specified bucket.
+
+    .. seealso::
+        For more information on how to use this operator, take a look at the guide:
+        :ref:`howto/operator:GCSBucketAddIamBindingOperator`
+
+    :param bucket_name: The name of the bucket. (templated)
+    :param bucket: (Deprecated) The name of the bucket. (templated)
+    :param role: The role to grant, e.g. 'roles/storage.objectViewer'. (templated)
+    :param member: The member to bind to the role. (templated)
+    :param members: Sequence of members to bind to the role. (templated)
+    :param user_project: (Optional) The project to be billed for this request.
+        Required for Requester Pays buckets. (templated)
+    :param gcp_conn_id: (Optional) The connection ID used to connect to Google Cloud. (templated)
+    :param impersonation_chain: Optional service account to impersonate using short-term
+        credentials, or chained list of accounts required to get the access_token
+        of the last account in the list, which will be impersonated in the request. (templated)
+    """
+
+    template_fields: Sequence[str] = (
+        "bucket_name",
+        "bucket",
+        "role",
+        "member",
+        "members",
+        "user_project",
+        "gcp_conn_id",
+        "impersonation_chain",
+    )
+    operator_extra_links = (StorageLink(),)
+
+    def __init__(
+        self,
+        *,
+        bucket_name: str | None = None,
+        bucket: str | None = None,
+        role: str,
+        member: str | None = None,
+        members: Sequence[str] | None = None,
+        user_project: str | None = None,
+        gcp_conn_id: str = "google_cloud_default",
+        impersonation_chain: str | Sequence[str] | None = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.bucket_name = bucket_name or bucket
+        self.bucket = bucket
+        self.role = role
+        self.member = member
+        self.members = members
+        self.user_project = user_project
+        self.gcp_conn_id = gcp_conn_id
+        self.impersonation_chain = impersonation_chain
+
+    def execute(self, context: Context) -> None:
+        hook = GCSHook(
+            gcp_conn_id=self.gcp_conn_id,
+            impersonation_chain=self.impersonation_chain,
+        )
+        StorageLink.persist(
+            context=context,
+            uri=self.bucket_name,
+            project_id=hook.project_id,
+        )
+        hook.add_bucket_iam_binding(
+            bucket_name=self.bucket_name,
+            role=self.role,
+            member=self.member,
+            members=self.members,
+            user_project=self.user_project,
+        )
