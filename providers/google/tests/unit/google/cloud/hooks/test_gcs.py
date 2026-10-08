@@ -21,7 +21,7 @@ import copy
 import logging
 import os
 import re
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from datetime import datetime, timedelta
 from io import BytesIO
 from unittest import mock
@@ -1261,6 +1261,71 @@ class TestGCSHook:
         # Then
         assert len(response) == 2
         assert all("in-interval" in b for b in response)
+
+
+
+    @mock.patch(GCS_STRING.format("GCSHook.get_conn"))
+    def test_add_bucket_iam_binding_single_member(self, mock_service):
+        test_bucket = "test_bucket"
+        test_role = "roles/storage.objectViewer"
+        test_member = "user:test@example.com"
+        test_user_project = "test-user-project"
+
+        mock_policy = defaultdict(set)
+        mock_policy[test_role].add("user:existing@example.com")
+        mock_bucket = mock_service.return_value.bucket.return_value
+        mock_bucket.get_iam_policy.return_value = mock_policy
+
+        self.gcs_hook.add_bucket_iam_binding(
+            bucket_name=test_bucket,
+            role=test_role,
+            member=test_member,
+            user_project=test_user_project,
+        )
+
+        mock_service.return_value.bucket.assert_called_once_with(test_bucket, user_project=test_user_project)
+        mock_bucket.get_iam_policy.assert_called_once_with(user_project=test_user_project)
+        assert test_member in mock_policy[test_role]
+        assert "user:existing@example.com" in mock_policy[test_role]
+        mock_bucket.set_iam_policy.assert_called_once_with(mock_policy, user_project=test_user_project)
+
+    @mock.patch(GCS_STRING.format("GCSHook.get_conn"))
+    def test_add_bucket_iam_binding_multiple_members(self, mock_service):
+        test_bucket = "test_bucket"
+        test_role = "roles/storage.admin"
+        test_members = ["user:member1@example.com", "user:member2@example.com"]
+
+        mock_policy = defaultdict(set)
+        mock_bucket = mock_service.return_value.bucket.return_value
+        mock_bucket.get_iam_policy.return_value = mock_policy
+
+        self.gcs_hook.add_bucket_iam_binding(
+            bucket_name=test_bucket,
+            role=test_role,
+            members=test_members,
+        )
+
+        mock_service.return_value.bucket.assert_called_once_with(test_bucket, user_project=None)
+        mock_bucket.get_iam_policy.assert_called_once_with(user_project=None)
+        for member in test_members:
+            assert member in mock_policy[test_role]
+        mock_bucket.set_iam_policy.assert_called_once_with(mock_policy, user_project=None)
+
+    @pytest.mark.parametrize(
+        ("member", "members", "expected_msg"),
+        [
+            (None, None, "Either member or members must be provided"),
+            ("user:a@example.com", ["user:b@example.com"], "Either member or members must be provided, not both"),
+        ],
+    )
+    def test_add_bucket_iam_binding_validation_fails(self, member, members, expected_msg):
+        with pytest.raises(ValueError, match=expected_msg):
+            self.gcs_hook.add_bucket_iam_binding(
+                bucket_name="test_bucket",
+                role="roles/storage.admin",
+                member=member,
+                members=members,
+            )
 
 
 class TestGCSHookUpload:
