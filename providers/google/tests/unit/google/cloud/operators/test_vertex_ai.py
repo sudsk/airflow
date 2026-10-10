@@ -45,6 +45,7 @@ from airflow.providers.google.cloud.operators.vertex_ai.batch_prediction_job imp
 )
 from airflow.providers.google.cloud.operators.vertex_ai.custom_job import (
     CreateCustomContainerTrainingJobOperator,
+    CreateCustomJobOperator,
     CreateCustomPythonPackageTrainingJobOperator,
     CreateCustomTrainingJobOperator,
     DeleteCustomTrainingJobOperator,
@@ -140,6 +141,19 @@ PYTHON_MODULE_NAME = "trainer.task"
 
 TRAINING_PIPELINE_ID = "test-training-pipeline-id"
 CUSTOM_JOB_ID = "test-custom-job-id"
+TEST_CUSTOM_JOB_NAME = f"projects/{GCP_PROJECT}/locations/{GCP_LOCATION}/customJobs/{CUSTOM_JOB_ID}"
+TEST_CUSTOM_JOB = {
+    "display_name": "test-custom-job-name",
+    "job_spec": {
+        "worker_pool_specs": [
+            {
+                "machine_spec": {"machine_type": MACHINE_TYPE},
+                "replica_count": 1,
+                "container_spec": {"image_uri": CONTAINER_URI},
+            }
+        ]
+    },
+}
 
 TEST_DATASET = {
     "display_name": "test-dataset-name",
@@ -1186,6 +1200,66 @@ class TestVertexAICreateCustomTrainingJobOperator:
         mock_ti.xcom_push.assert_called_once()
         mock_link_persist.assert_not_called()
         assert actual_result == expected_result
+
+
+class TestVertexAICreateCustomJobOperator:
+    @mock.patch(VERTEX_AI_LINKS_PATH.format("VertexAITrainingLink.persist"))
+    @mock.patch(VERTEX_AI_PATH.format("custom_job.types.CustomJob.to_dict"))
+    @mock.patch(VERTEX_AI_PATH.format("custom_job.CustomJobHook"))
+    def test_execute(self, mock_hook, to_dict_mock, mock_link_persist):
+        mock_hook.return_value.create_custom_job.return_value = mock.MagicMock()
+        mock_hook.return_value.extract_custom_job_id.return_value = CUSTOM_JOB_ID
+        to_dict_mock.return_value = {"name": TEST_CUSTOM_JOB_NAME, **TEST_CUSTOM_JOB}
+
+        op = CreateCustomJobOperator(
+            task_id=TASK_ID,
+            gcp_conn_id=GCP_CONN_ID,
+            impersonation_chain=IMPERSONATION_CHAIN,
+            region=GCP_LOCATION,
+            project_id=GCP_PROJECT,
+            custom_job=TEST_CUSTOM_JOB,
+            retry=RETRY,
+            timeout=TIMEOUT,
+            metadata=METADATA,
+        )
+        mock_ti = mock.MagicMock()
+        mock_context = {"ti": mock_ti, "task": mock.MagicMock()}
+
+        result = op.execute(context=mock_context)
+
+        mock_hook.assert_called_once_with(gcp_conn_id=GCP_CONN_ID, impersonation_chain=IMPERSONATION_CHAIN)
+        mock_hook.return_value.create_custom_job.assert_called_once_with(
+            project_id=GCP_PROJECT,
+            region=GCP_LOCATION,
+            custom_job=TEST_CUSTOM_JOB,
+            retry=RETRY,
+            timeout=TIMEOUT,
+            metadata=METADATA,
+        )
+        to_dict_mock.assert_called_once_with(mock_hook.return_value.create_custom_job.return_value)
+        mock_hook.return_value.extract_custom_job_id.assert_called_once_with(TEST_CUSTOM_JOB_NAME)
+        mock_ti.xcom_push.assert_called_once_with(key="custom_job_id", value=CUSTOM_JOB_ID)
+        mock_link_persist.assert_called_once_with(context=mock_context, training_id=CUSTOM_JOB_ID)
+        assert result == {"name": TEST_CUSTOM_JOB_NAME, **TEST_CUSTOM_JOB}
+
+    @pytest.mark.db_test
+    def test_templating(self, create_task_instance_of_operator, session):
+        ti = create_task_instance_of_operator(
+            CreateCustomJobOperator,
+            # Templated fields
+            region="{{ 'region' }}",
+            project_id="{{ 'project_id' }}",
+            impersonation_chain="{{ 'impersonation-chain' }}",
+            custom_job="{{ 'custom_job' }}",
+            # Other parameters
+            dag_id="test_template_body_templating_dag",
+            task_id="test_template_body_templating_task",
+        )
+        task = ti.render_templates()
+        assert task.region == "region"
+        assert task.project_id == "project_id"
+        assert task.impersonation_chain == "impersonation-chain"
+        assert task.custom_job == "custom_job"
 
 
 class TestVertexAIDeleteCustomTrainingJobOperator:

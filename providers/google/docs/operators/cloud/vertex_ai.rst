@@ -267,6 +267,9 @@ The same operation can be performed in the deferrable mode:
     :end-before: [END how_to_cloud_vertex_ai_create_custom_training_job_v2_deferrable_operator]
 
 
+To create a CustomJob directly from a configuration, you can use
+:class:`~airflow.providers.google.cloud.operators.vertex_ai.custom_job.CreateCustomJobOperator`.
+
 You can get a list of Training Jobs using
 :class:`~airflow.providers.google.cloud.operators.vertex_ai.custom_job.ListCustomTrainingJobOperator`.
 

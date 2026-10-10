@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 from google.api_core.exceptions import NotFound
 from google.api_core.gapic_v1.method import DEFAULT, _MethodDefault
 from google.cloud.aiplatform.models import Model
+from google.cloud.aiplatform_v1 import types
 from google.cloud.aiplatform_v1.types.dataset import Dataset
 from google.cloud.aiplatform_v1.types.training_pipeline import TrainingPipeline
 
@@ -50,7 +51,7 @@ if TYPE_CHECKING:
         CustomPythonPackageTrainingJob,
         CustomTrainingJob,
     )
-    from google.cloud.aiplatform_v1.types import PscInterfaceConfig
+    from google.cloud.aiplatform_v1.types import CustomJob, PscInterfaceConfig
 
     from airflow.providers.common.compat.sdk import Context
 
@@ -1603,6 +1604,86 @@ class CreateCustomTrainingJobOperator(CustomTrainingJobBaseOperator):
             ),
             method_name="execute_complete",
         )
+
+
+
+class CreateCustomJobOperator(GoogleCloudBaseOperator):
+    """
+    Create a CustomJob from a CustomJob configuration.
+
+    :param project_id: Required. The ID of the Google Cloud project that the service belongs to.
+    :param region: Required. The ID of the Google Cloud region that the service belongs to.
+    :param custom_job: Required. The CustomJob definition/configuration to create.
+    :param retry: Designation of what errors, if any, should be retried.
+    :param timeout: The timeout for this request in seconds.
+    :param metadata: Strings which should be sent along with the request as metadata.
+    :param gcp_conn_id: The connection ID to use connecting to Google Cloud.
+    :param impersonation_chain: Optional service account to impersonate using short-term
+        credentials, or chained list of accounts required to get the access_token
+        of the last account in the list, which will be impersonated in the request.
+        If set as a string, the account must grant the originating account
+        the Service Account Token Creator IAM role.
+        If set as a sequence, the identities from the list must grant
+        Service Account Token Creator IAM role to the directly preceding identity, with first
+        account from the list granting this role to the originating account (templated).
+    """
+
+    template_fields = (
+        "region",
+        "project_id",
+        "impersonation_chain",
+        "custom_job",
+    )
+    operator_extra_links = (VertexAITrainingLink(),)
+
+    def __init__(
+        self,
+        *,
+        project_id: str,
+        region: str,
+        custom_job: CustomJob | dict,
+        retry: Retry | _MethodDefault = DEFAULT,
+        timeout: float | None = None,
+        metadata: Sequence[tuple[str, str]] = (),
+        gcp_conn_id: str = "google_cloud_default",
+        impersonation_chain: str | Sequence[str] | None = None,
+        **kwargs,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.project_id = project_id
+        self.region = region
+        self.custom_job = custom_job
+        self.retry = retry
+        self.timeout = timeout
+        self.metadata = metadata
+        self.gcp_conn_id = gcp_conn_id
+        self.impersonation_chain = impersonation_chain
+
+    @property
+    def extra_links_params(self) -> dict[str, Any]:
+        return {
+            "region": self.region,
+            "project_id": self.project_id,
+        }
+
+    def execute(self, context: Context):
+        hook = CustomJobHook(
+            gcp_conn_id=self.gcp_conn_id,
+            impersonation_chain=self.impersonation_chain,
+        )
+        result = hook.create_custom_job(
+            project_id=self.project_id,
+            region=self.region,
+            custom_job=self.custom_job,
+            retry=self.retry,
+            timeout=self.timeout,
+            metadata=self.metadata,
+        )
+        custom_job = types.CustomJob.to_dict(result)
+        custom_job_id = hook.extract_custom_job_id(custom_job["name"])
+        context["ti"].xcom_push(key="custom_job_id", value=custom_job_id)
+        VertexAITrainingLink.persist(context=context, training_id=custom_job_id)
+        return custom_job
 
 
 class DeleteCustomTrainingJobOperator(GoogleCloudBaseOperator):
