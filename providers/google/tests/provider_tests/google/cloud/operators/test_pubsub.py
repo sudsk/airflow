@@ -20,9 +20,11 @@ from __future__ import annotations
 from typing import Any
 from unittest import mock
 
+import pytest
 from google.api_core.gapic_v1.method import DEFAULT
 from google.cloud.pubsub_v1.types import ReceivedMessage
 
+from airflow.exceptions import AirflowException, TaskDeferred
 from airflow.providers.google.cloud.operators.pubsub import (
     PubSubCreateSubscriptionOperator,
     PubSubCreateTopicOperator,
@@ -31,6 +33,7 @@ from airflow.providers.google.cloud.operators.pubsub import (
     PubSubPublishMessageOperator,
     PubSubPullOperator,
 )
+from airflow.providers.google.cloud.triggers.pubsub import PubsubPullTrigger
 
 TASK_ID = "test-task-id"
 TEST_PROJECT = "test-project"
@@ -337,3 +340,85 @@ class TestPubSubPullOperator:
         messages_callback.assert_called_once()
 
         assert response == messages_callback_return_value
+
+    def test_pubsub_pull_operator_async(self):
+        """
+        Asserts that a task is deferred and a PubsubPullTrigger will be fired
+        when the PubSubPullOperator is executed with deferrable=True.
+        """
+        operator = PubSubPullOperator(
+            task_id=TASK_ID,
+            project_id=TEST_PROJECT,
+            subscription=TEST_SUBSCRIPTION,
+            ack_messages=True,
+            poke_interval=10.0,
+            deferrable=True,
+        )
+        with pytest.raises(TaskDeferred) as exc:
+            operator.execute({})
+        assert isinstance(exc.value.trigger, PubsubPullTrigger), "Trigger is not a PubsubPullTrigger"
+        assert exc.value.trigger.project_id == TEST_PROJECT
+        assert exc.value.trigger.subscription == TEST_SUBSCRIPTION
+        assert exc.value.trigger.max_messages == 5
+        assert exc.value.trigger.ack_messages is True
+        assert exc.value.trigger.poke_interval == 10.0
+
+    def test_pubsub_pull_operator_async_execute_complete(self):
+        operator = PubSubPullOperator(
+            task_id=TASK_ID,
+            project_id=TEST_PROJECT,
+            subscription=TEST_SUBSCRIPTION,
+            deferrable=True,
+        )
+        test_messages = [{"ack_id": "1", "message": {"data": "test"}}]
+        response = operator.execute_complete(
+            context={}, event={"status": "success", "message": test_messages}
+        )
+        assert response == test_messages
+
+    def test_pubsub_pull_operator_async_execute_complete_with_messages_callback(self):
+        test_message = [
+            {
+                "ack_id": "1",
+                "message": {
+                    "data": b"Message 1",
+                    "attributes": {"type": "generated message"},
+                },
+                "delivery_attempt": 0,
+            }
+        ]
+        received_messages = [ReceivedMessage(msg) for msg in test_message]
+        messages_callback_return_value = "custom_message_from_callback"
+
+        def messages_callback(
+            pulled_messages: list[ReceivedMessage],
+            context: dict[str, Any],
+        ):
+            assert pulled_messages == received_messages
+            assert isinstance(context, dict)
+            return messages_callback_return_value
+
+        operator = PubSubPullOperator(
+            task_id=TASK_ID,
+            project_id=TEST_PROJECT,
+            subscription=TEST_SUBSCRIPTION,
+            deferrable=True,
+            messages_callback=messages_callback,
+        )
+
+        response = operator.execute_complete(
+            context={}, event={"status": "success", "message": test_message}
+        )
+        assert response == messages_callback_return_value
+
+    def test_pubsub_pull_operator_async_execute_should_throw_exception(self):
+        operator = PubSubPullOperator(
+            task_id=TASK_ID,
+            project_id=TEST_PROJECT,
+            subscription=TEST_SUBSCRIPTION,
+            deferrable=True,
+        )
+        with pytest.raises(AirflowException):
+            operator.execute_complete(
+                context={}, event={"status": "error", "message": "test failure message"}
+            )
