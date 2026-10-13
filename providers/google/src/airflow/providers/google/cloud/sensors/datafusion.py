@@ -22,6 +22,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import TYPE_CHECKING
 
+from requests.exceptions import HTTPError
+
 from airflow.providers.common.compat.sdk import AirflowException, AirflowNotFoundException, BaseSensorOperator
 from airflow.providers.google.cloud.hooks.datafusion import DataFusionHook
 from airflow.providers.google.common.hooks.base_google import PROVIDE_PROJECT_ID
@@ -116,7 +118,7 @@ class CloudDataFusionPipelineStateSensor(BaseSensorOperator):
         except AirflowNotFoundException:
             message = "Specified Pipeline ID was not found."
             raise AirflowException(message)
-        except AirflowException:
+        except (AirflowException, HTTPError):
             pass  # Because the pipeline may not be visible in system yet
         if pipeline_status is not None:
             if self.failure_statuses and pipeline_status in self.failure_statuses:

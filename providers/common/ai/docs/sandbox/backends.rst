@@ -18,6 +18,11 @@
 Sandbox backends
 ================
 
+.. note::
+
+    Experimental: this can change or be removed in a minor release of this provider.
+    See :ref:`howto/stability`.
+
 .. _sandbox-backend-modal:
 
 Modal (hosted)
@@ -29,11 +34,19 @@ provider, **this is the managed one to use in production**, and with
 :ref:`OpenSandbox <sandbox-backend-opensandbox>` one of the two that run on
 Kubernetes: nothing has to be installed on the worker, model-written code never
 executes on the worker host, and Modal reclaims a sandbox at its own lifetime
-whether or not the worker survives. It needs the ``modal`` extra and ambient
-credentials, as under :ref:`Quick start <sandbox-quick-start>`.
+whether or not the worker survives. It needs the ``modal`` extra and Modal
+credentials, from a ``modal`` connection or the worker environment, as under
+:ref:`Quick start <sandbox-quick-start>`.
 
 Constructor parameters:
 
+- ``modal_conn_id``: ``modal`` connection the token and, optionally, the Modal
+  ``environment`` come from. Default ``"modal_default"``; ``None`` uses the worker's
+  credentials without looking for a connection. How a missing or partial connection
+  resolves is on the :ref:`Modal connection page <howto/connection:modal>`. A credential
+  problem fails the task, except in the toolset's own teardown, which logs it so a
+  finished run is not failed. The connection type comes from the Modal provider, which
+  the ``modal`` extra installs and which needs Airflow 3.
 - ``image``: Registry tag for the sandbox image, or a prepared ``modal.Image``
   carrying pre-installed packages. Default ``"python:3.12-slim"``.
 - ``app_name``: Modal app the sandboxes are created under. Default
@@ -53,7 +66,19 @@ Constructor parameters:
   ``None`` lets Modal choose. An unrecognized ``region`` or ``cloud`` fails the
   task rather than falling back.
 - ``tags``: Extra Modal tags on every sandbox, e.g. ``{"dag_id": "my_dag"}``.
+  The backend's own ``airflow_`` keys overwrite a tag of the same name.
 - ``egress_enforcement``: ``"strict"`` (default) or ``"sni"``. See below.
+
+**A sandbox can be provisioned by one task and used by another.** Modal finds a
+sandbox by id from any process, so this backend implements
+:class:`~airflow.providers.common.ai.sandbox.AttachableSandboxBackend`: a
+``@task`` calls ``create`` and later ``destroy``, and a ``SandboxToolset`` with
+``attach_to`` uses the sandbox in between. The ownership rules ride on Modal tags,
+``airflow_owner`` from ``SandboxSpec.owner``, ``airflow_holder`` while a run holds
+the sandbox, ``airflow_expires_at`` so the attaching side knows the clock and
+``airflow_network`` so it knows the policy, and ``Sandbox.list(tags=...)`` finds
+them. Reading tags back needs ``modal>=1.5.2``, which is the extra's floor. How
+to use it is on :ref:`Configuration <sandbox-attach>`.
 
 **Network policy.** ``block_network=True`` maps exactly onto Modal's own
 ``block_network``, which drops all outbound traffic including DNS. A spec that
@@ -223,6 +248,8 @@ The runtime remains a deployment choice. The default Docker runtime shares the
 host kernel; choose a stronger runtime such as Kata when your threat model needs
 a VM boundary.
 
+.. _sandbox-backend-sbx:
+
 sbx (Docker Sandboxes, local)
 -----------------------------
 
@@ -288,6 +315,13 @@ behaves identically everywhere:
   client-side grace period.
 - **Symlinks.** ``write_file`` through a symlink follows the link on ``sbx`` and
   replaces it on Modal and OpenSandbox.
+- **Attaching.** A Modal sandbox can be provisioned by one task and used by an
+  agent in another (:ref:`sandbox-attach`). An ``sbx`` microVM lives on the worker
+  that created it and cannot be reached from another task, and OpenSandbox has no
+  per-sandbox metadata the ownership rules could be kept in, so both refuse
+  ``SandboxSpec.owner`` and the toolset refuses ``attach_to`` for them.
+
+.. _sandbox-byo:
 
 Bringing your own backend
 -------------------------
@@ -297,9 +331,14 @@ in. Subclass :class:`~airflow.providers.common.ai.sandbox.SandboxBackend` in you
 own package and pass an instance to ``SandboxToolset``.
 
 **Three methods are required**: ``create``, ``run_command`` and ``destroy``. The
-three file operations ship as defaults implemented over ``run_command``, because
-reading, writing and listing a file are all expressible as shell commands.
-Override them only when the vendor has a native file API:
+file operations ship as defaults implemented over ``run_command``, because
+reading, writing, listing and exporting a file are all expressible as shell
+commands. The default ``export_file``, behind ``SandboxToolset(exports=...)``,
+copies a file in 4 MiB slices, one command each, and needs ``stat``, ``tail``,
+``head`` and ``base64`` in the guest. It relies on ``run_command`` returning each
+slice's output intact, or setting ``stdout_truncated`` when it could not. Override
+it when the vendor can stream a download, as the ``sbx`` and OpenSandbox backends do. Override the others
+only when the vendor has a native file API:
 
 .. code-block:: python
 
@@ -337,3 +376,21 @@ Four rules for an implementation:
   becomes a bounded prompt back to the model.
 - If you cannot enforce something the ``SandboxSpec`` asks for, **raise**. Never
   provision a weaker sandbox than the Dag author asked for.
+
+**If your sandboxes can be found again from another process**, subclass
+:class:`~airflow.providers.common.ai.sandbox.AttachableSandboxBackend` instead,
+and a ``@task`` can provision a sandbox for an agent task to attach to
+(:ref:`sandbox-attach`). It adds two methods, ``read_tags`` and ``write_tags``,
+over whatever key-value metadata the vendor keeps on a sandbox, and the ownership
+rules are written once on the base class on top of them. Three things the base
+class relies on: ``read_tags`` raises ``SandboxTerminalError`` for a sandbox that
+does not exist or has ended; ``write_tags`` replaces the whole set, because
+releasing a claim is a rewrite without the holder key; and ``create`` stamps
+``SandboxSpec.owner`` under ``OWNER_TAG``, the sandbox's end time as Unix seconds
+under ``EXPIRES_AT_TAG``, and the network policy under ``NETWORK_TAG`` using
+``encode_network_policy(spec)``, all importable from
+``airflow.providers.common.ai.sandbox.base``. If the vendor lets a caller of your
+backend set metadata too, make your reserved keys overwrite theirs. Stamping the
+working directory under ``WORKDIR_TAG`` is optional; without it the attaching
+backend asks the sandbox. The toolset shortens ``run_command`` to the remaining
+lifetime itself; a backend clamps only if its own file operations need it.
