@@ -20,6 +20,7 @@ from __future__ import annotations
 from unittest import mock
 
 import pytest
+from requests.exceptions import HTTPError
 
 from airflow.providers.common.compat.sdk import AirflowException, AirflowNotFoundException
 from airflow.providers.google.cloud.hooks.datafusion import PipelineStates
@@ -73,6 +74,32 @@ class TestCloudDataFusionPipelineStateSensor:
         mock_hook.return_value.get_instance.assert_called_once_with(
             instance_name=INSTANCE_NAME, location=LOCATION, project_id=PROJECT_ID
         )
+
+    @pytest.mark.parametrize(
+        "exception",
+        [
+            AirflowException("Pipeline not ready"),
+            HTTPError("404 Client Error: Not Found"),
+        ],
+    )
+    @mock.patch("airflow.providers.google.cloud.sensors.datafusion.DataFusionHook")
+    def test_poke_retry_on_exception(self, mock_hook, exception):
+        mock_hook.return_value.get_instance.return_value = {"apiEndpoint": INSTANCE_URL}
+        mock_hook.return_value.get_pipeline_workflow.side_effect = exception
+
+        task = CloudDataFusionPipelineStateSensor(
+            task_id="test_task_id",
+            pipeline_name=PIPELINE_NAME,
+            pipeline_id=PIPELINE_ID,
+            project_id=PROJECT_ID,
+            expected_statuses={PipelineStates.COMPLETED},
+            instance_name=INSTANCE_NAME,
+            location=LOCATION,
+            gcp_conn_id=GCP_CONN_ID,
+            impersonation_chain=IMPERSONATION_CHAIN,
+        )
+
+        assert task.poke(mock.MagicMock()) is False
 
     @mock.patch("airflow.providers.google.cloud.sensors.datafusion.DataFusionHook")
     def test_assertion(self, mock_hook):
