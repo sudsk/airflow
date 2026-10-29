@@ -989,4 +989,19 @@ class BigQueryStreamingBufferEmptyTrigger(BaseTrigger):
         if not response:
             raise ValueError(f"Table {project_id}.{dataset_id}.{table_id} does not exist")
 
-        return response.get("streamingBuffer") is None
+        if response.get("streamingBuffer") is not None:
+            return False
+
+        import time
+
+        now_millis = time.time() * 1000
+        for field in ("lastModifiedTime", "creationTime"):
+            val = response.get(field)
+            if val:
+                try:
+                    if now_millis - int(val) < 20000:
+                        return False
+                except ValueError:
+                    pass
+
+        return True
