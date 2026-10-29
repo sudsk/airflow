@@ -131,6 +131,103 @@ class TestDataflowJobStatusSensor:
             "Trigger is not a DataflowJobStatusTrigger"
         )
 
+    def test_init_raises_exception_for_both_job_id_and_name(self):
+        with pytest.raises(AirflowException, match="Exactly one of job_id or job_name must be provided."):
+            DataflowJobStatusSensor(
+                task_id=TEST_TASK_ID,
+                job_id=TEST_JOB_ID,
+                job_name="test_job_name",
+                expected_statuses=DataflowJobStatus.JOB_STATE_DONE,
+                location=TEST_LOCATION,
+                project_id=TEST_PROJECT_ID,
+            )
+
+    def test_init_raises_exception_for_missing_job_id_and_name(self):
+        with pytest.raises(AirflowException, match="Exactly one of job_id or job_name must be provided."):
+            DataflowJobStatusSensor(
+                task_id=TEST_TASK_ID,
+                expected_statuses=DataflowJobStatus.JOB_STATE_DONE,
+                location=TEST_LOCATION,
+                project_id=TEST_PROJECT_ID,
+            )
+
+    @mock.patch("airflow.providers.google.cloud.sensors.dataflow.DataflowHook")
+    def test_poke_with_job_name(self, mock_hook):
+        mock_get_conn = mock_hook.return_value.get_conn
+        mock_jobs_list = mock_get_conn.return_value.projects.return_value.locations.return_value.jobs.return_value.list
+        mock_jobs_list_next = mock_get_conn.return_value.projects.return_value.locations.return_value.jobs.return_value.list_next
+
+        request_mock = mock.MagicMock()
+        mock_jobs_list.return_value = request_mock
+        request_mock.execute.return_value = {
+            "jobs": [
+                {"id": "id1", "name": "other_name", "currentState": DataflowJobStatus.JOB_STATE_RUNNING, "createTime": "2023-01-01T00:00:00Z"},
+                {"id": "id2", "name": "test_job_name", "currentState": DataflowJobStatus.JOB_STATE_DONE, "createTime": "2023-01-02T00:00:00Z"},
+                {"id": "id3", "name": "test_job_name", "currentState": DataflowJobStatus.JOB_STATE_RUNNING, "createTime": "2023-01-01T00:00:00Z"},
+            ]
+        }
+        mock_jobs_list_next.return_value = None
+
+        task = DataflowJobStatusSensor(
+            task_id=TEST_TASK_ID,
+            job_name="test_job_name",
+            expected_statuses=DataflowJobStatus.JOB_STATE_DONE,
+            location=TEST_LOCATION,
+            project_id=TEST_PROJECT_ID,
+            gcp_conn_id=TEST_GCP_CONN_ID,
+            impersonation_chain=TEST_IMPERSONATION_CHAIN,
+        )
+        results = task.poke(mock.MagicMock())
+        
+        assert results is True
+        mock_jobs_list.assert_called_once_with(projectId=TEST_PROJECT_ID, location=TEST_LOCATION)
+
+    @mock.patch("airflow.providers.google.cloud.sensors.dataflow.DataflowHook")
+    def test_poke_with_job_name_continue_sensing(self, mock_hook):
+        mock_get_conn = mock_hook.return_value.get_conn
+        mock_jobs_list = mock_get_conn.return_value.projects.return_value.locations.return_value.jobs.return_value.list
+        mock_jobs_list_next = mock_get_conn.return_value.projects.return_value.locations.return_value.jobs.return_value.list_next
+
+        request_mock = mock.MagicMock()
+        mock_jobs_list.return_value = request_mock
+        request_mock.execute.return_value = {
+            "jobs": []
+        }
+        mock_jobs_list_next.return_value = None
+
+        task = DataflowJobStatusSensor(
+            task_id=TEST_TASK_ID,
+            job_name="test_job_name",
+            expected_statuses=DataflowJobStatus.JOB_STATE_DONE,
+            location=TEST_LOCATION,
+            project_id=TEST_PROJECT_ID,
+            gcp_conn_id=TEST_GCP_CONN_ID,
+            impersonation_chain=TEST_IMPERSONATION_CHAIN,
+        )
+        results = task.poke(mock.MagicMock())
+        
+        assert results is False
+        mock_jobs_list.assert_called_once_with(projectId=TEST_PROJECT_ID, location=TEST_LOCATION)
+
+    @mock.patch("airflow.providers.google.cloud.sensors.dataflow.DataflowJobStatusSensor.poke")
+    @mock.patch("airflow.providers.google.cloud.hooks.dataflow.AsyncDataflowHook")
+    def test_execute_enters_deferred_state_with_job_name(self, mock_hook, mock_poke):
+        task = DataflowJobStatusSensor(
+            task_id=TEST_TASK_ID,
+            job_name="test_job_name",
+            expected_statuses=DataflowJobStatus.JOB_STATE_DONE,
+            location=TEST_LOCATION,
+            project_id=TEST_PROJECT_ID,
+            gcp_conn_id=TEST_GCP_CONN_ID,
+            impersonation_chain=TEST_IMPERSONATION_CHAIN,
+            deferrable=True,
+        )
+        mock_hook.return_value.exists.return_value = False
+        mock_poke.return_value = False
+        with pytest.raises(TaskDeferred) as exc:
+            task.execute(None)
+        assert isinstance(exc.value.trigger, DataflowJobStatusTrigger)
+
     def test_execute_complete_success(self):
         """Tests that the trigger event contains expected values if no callback function is provided."""
         expected_result = True
