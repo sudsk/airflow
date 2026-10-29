@@ -680,7 +680,8 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the run status.
     """
@@ -693,7 +694,7 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
         "cluster_name",
         "labels",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"cluster_config": "json", "virtual_cluster_config": "json"}
 
@@ -717,6 +718,7 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         **kwargs,
@@ -756,6 +758,7 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
         self.delete_on_error = delete_on_error
         self.use_if_exists = use_if_exists
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.virtual_cluster_config = virtual_cluster_config
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
@@ -899,7 +902,7 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
     def execute(self, context: Context) -> dict:
 
         self.log.info("Attempting to create cluster: %s", self.cluster_name)
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
 
         # Save data required to display extra link regardless of the cluster status.
         project_id = self.project_id or hook.project_id
@@ -932,7 +935,7 @@ class DataprocCreateClusterOperator(GoogleCloudBaseOperator):
                             project_id=self.project_id,
                             region=self.region,
                             gcp_conn_id=self.gcp_conn_id,
-                            impersonation_chain=self.impersonation_chain,
+                            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                             polling_interval_seconds=self.polling_interval_seconds,
                             delete_on_error=self.delete_on_error,
                         ),
@@ -1030,7 +1033,8 @@ class DataprocDeleteClusterOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the cluster status.
     """
@@ -1040,7 +1044,7 @@ class DataprocDeleteClusterOperator(GoogleCloudBaseOperator):
         "region",
         "cluster_name",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     def __init__(
@@ -1056,6 +1060,7 @@ class DataprocDeleteClusterOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         **kwargs,
@@ -1073,11 +1078,12 @@ class DataprocDeleteClusterOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
 
     def execute(self, context: Context) -> None:
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         try:
             op: operation.Operation = self._delete_cluster(hook)
 
@@ -1105,7 +1111,7 @@ class DataprocDeleteClusterOperator(GoogleCloudBaseOperator):
                     cluster_name=self.cluster_name,
                     end_time=end_time,
                     metadata=self.metadata,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                 ),
                 method_name="execute_complete",
@@ -1162,7 +1168,8 @@ class _DataprocStartStopClusterBaseOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields = (
@@ -1171,7 +1178,7 @@ class _DataprocStartStopClusterBaseOperator(GoogleCloudBaseOperator):
         "project_id",
         "request_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     def __init__(
@@ -1187,6 +1194,7 @@ class _DataprocStartStopClusterBaseOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1200,6 +1208,7 @@ class _DataprocStartStopClusterBaseOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self._hook: DataprocHook | None = None
 
     @property
@@ -1207,7 +1216,7 @@ class _DataprocStartStopClusterBaseOperator(GoogleCloudBaseOperator):
         if self._hook is None:
             self._hook = DataprocHook(
                 gcp_conn_id=self.gcp_conn_id,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             )
         return self._hook
 
@@ -1356,7 +1365,8 @@ class DataprocJobBaseOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param asynchronous: Flag to return after submitting the job to the Dataproc API.
         This is useful for submitting long running jobs and
         waiting on them asynchronously using the DataprocJobSensor
@@ -1388,6 +1398,7 @@ class DataprocJobBaseOperator(GoogleCloudBaseOperator):
         labels: dict | None = None,
         job_error_states: set[str] | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         asynchronous: bool = False,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
@@ -1406,6 +1417,7 @@ class DataprocJobBaseOperator(GoogleCloudBaseOperator):
 
         self.job_error_states = job_error_states or {"ERROR"}
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.hook = DataprocHook(gcp_conn_id=gcp_conn_id, impersonation_chain=impersonation_chain)
         self.project_id = project_id or self.hook.project_id
         self.job_template: DataProcJobBuilder | None = None
@@ -1462,7 +1474,7 @@ class DataprocJobBaseOperator(GoogleCloudBaseOperator):
                         project_id=self.project_id,
                         region=self.region,
                         gcp_conn_id=self.gcp_conn_id,
-                        impersonation_chain=self.impersonation_chain,
+                        impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                         polling_interval_seconds=self.polling_interval_seconds,
                     ),
                     method_name="execute_complete",
@@ -1525,6 +1537,7 @@ class DataprocCreateWorkflowTemplateOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -1536,9 +1549,10 @@ class DataprocCreateWorkflowTemplateOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         self.log.info("Creating template")
         try:
             workflow = hook.create_workflow_template(
@@ -1598,7 +1612,8 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the run status.
     :param cancel_on_kill: Flag which indicates whether cancel the workflow, when on_kill is called
@@ -1607,7 +1622,7 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
     template_fields: Sequence[str] = (
         "template_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "request_id",
         "parameters",
     )
@@ -1628,6 +1643,7 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         cancel_on_kill: bool = True,
@@ -1647,13 +1663,14 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
         self.request_id = request_id
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
         self.cancel_on_kill = cancel_on_kill
         self.operation_name: str | None = None
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         self.log.info("Instantiating template %s", self.template_id)
         operation = hook.instantiate_workflow_template(
             project_id=self.project_id,
@@ -1688,7 +1705,7 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
                     project_id=self.project_id,
                     region=self.region,
                     gcp_conn_id=self.gcp_conn_id,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                 ),
                 method_name="execute_complete",
@@ -1709,7 +1726,7 @@ class DataprocInstantiateWorkflowTemplateOperator(GoogleCloudBaseOperator):
 
     def on_kill(self) -> None:
         if self.cancel_on_kill and self.operation_name:
-            hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+            hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
             hook.get_operations_client(region=self.region).cancel_operation(name=self.operation_name)
 
 
@@ -1752,13 +1769,14 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the run status.
     :param cancel_on_kill: Flag which indicates whether cancel the workflow, when on_kill is called
     """
 
-    template_fields: Sequence[str] = ("template", "gcp_conn_id", "impersonation_chain")
+    template_fields: Sequence[str] = ("template", "gcp_conn_id", "impersonation_chain", "quota_project_id")
     template_fields_renderers = {"template": "json"}
     operator_extra_links = (DataprocWorkflowLink(),)
 
@@ -1774,6 +1792,7 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         cancel_on_kill: bool = True,
@@ -1798,6 +1817,7 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
         self.cancel_on_kill = cancel_on_kill
@@ -1807,7 +1827,7 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
 
     def execute(self, context: Context):
         self.log.info("Instantiating Inline Template")
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         project_id = self.project_id or hook.project_id
         if self.openlineage_inject_parent_job_info or self.openlineage_inject_transport_info:
             self.log.info("Automatic injection of OpenLineage information into Spark properties is enabled.")
@@ -1843,7 +1863,7 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
                     project_id=self.project_id or hook.project_id,
                     region=self.region,
                     gcp_conn_id=self.gcp_conn_id,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                 ),
                 method_name="execute_complete",
@@ -1864,7 +1884,7 @@ class DataprocInstantiateInlineWorkflowTemplateOperator(GoogleCloudBaseOperator)
 
     def on_kill(self) -> None:
         if self.cancel_on_kill and self.operation_name:
-            hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+            hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
             hook.get_operations_client(region=self.region).cancel_operation(name=self.operation_name)
 
     def _inject_openlineage_properties_into_dataproc_workflow_template(self, context: Context) -> None:
@@ -1915,7 +1935,8 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param asynchronous: Flag to return after submitting the job to the Dataproc API.
         This is useful for submitting long-running jobs and
         waiting on them asynchronously using the DataprocJobSensor
@@ -1933,7 +1954,7 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
         "region",
         "job",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "request_id",
     )
     template_fields_renderers = {"job": "json"}
@@ -1961,6 +1982,7 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         asynchronous: bool = False,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
@@ -1987,6 +2009,7 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.asynchronous = asynchronous
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
@@ -2018,7 +2041,7 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
 
     def execute(self, context: Context):
         self.log.info("Submitting job")
-        self.hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        self.hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         if self.openlineage_inject_parent_job_info or self.openlineage_inject_transport_info:
             self.log.info("Automatic injection of OpenLineage information into Spark properties is enabled.")
             self._inject_openlineage_properties_into_dataproc_job(context)
@@ -2060,7 +2083,7 @@ class DataprocSubmitJobOperator(GoogleCloudBaseOperator):
                     project_id=self.project_id,
                     region=self.region,
                     gcp_conn_id=self.gcp_conn_id,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                     cancel_on_kill=self.cancel_on_kill,
                 ),
@@ -2152,7 +2175,8 @@ class DataprocUpdateClusterOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the run status.
     """
@@ -2164,7 +2188,7 @@ class DataprocUpdateClusterOperator(GoogleCloudBaseOperator):
         "request_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     operator_extra_links = (DataprocClusterLink(),)
 
@@ -2183,6 +2207,7 @@ class DataprocUpdateClusterOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         **kwargs,
@@ -2202,11 +2227,12 @@ class DataprocUpdateClusterOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         # Save data required by extra links no matter what the cluster status will be
         project_id = self.project_id or hook.project_id
         if project_id:
@@ -2243,7 +2269,7 @@ class DataprocUpdateClusterOperator(GoogleCloudBaseOperator):
                         project_id=self.project_id,
                         region=self.region,
                         gcp_conn_id=self.gcp_conn_id,
-                        impersonation_chain=self.impersonation_chain,
+                        impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                         polling_interval_seconds=self.polling_interval_seconds,
                     ),
                     method_name="execute_complete",
@@ -2290,7 +2316,8 @@ class DataprocDiagnoseClusterOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param polling_interval_seconds: Time (seconds) to wait between calls to check the cluster status.
     """
@@ -2300,7 +2327,7 @@ class DataprocDiagnoseClusterOperator(GoogleCloudBaseOperator):
         "region",
         "cluster_name",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "tarball_gcs_dir",
         "diagnosis_interval",
         "jobs",
@@ -2322,6 +2349,7 @@ class DataprocDiagnoseClusterOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         polling_interval_seconds: int = 10,
         **kwargs,
@@ -2341,11 +2369,12 @@ class DataprocDiagnoseClusterOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.polling_interval_seconds = polling_interval_seconds
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         self.log.info("Collecting diagnostic tarball for cluster: %s", self.cluster_name)
         operation = hook.diagnose_cluster(
             region=self.region,
@@ -2377,7 +2406,7 @@ class DataprocDiagnoseClusterOperator(GoogleCloudBaseOperator):
                     project_id=self.project_id,
                     region=self.region,
                     gcp_conn_id=self.gcp_conn_id,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                 ),
                 method_name="execute_complete",
@@ -2436,7 +2465,8 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param asynchronous: Flag to return after creating batch to the Dataproc API.
         This is useful for creating long-running batch and
         waiting on them asynchronously using the DataprocBatchSensor
@@ -2451,7 +2481,7 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
         "batch_id_prefix",
         "region",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     operator_extra_links = (DataprocBatchLink(),)
     _BATCH_ID_SUFFIX_LENGTH = 8
@@ -2471,6 +2501,7 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         result_retry: AsyncRetry | _MethodDefault | Retry = DEFAULT,
         asynchronous: bool = False,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
@@ -2499,6 +2530,7 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.operation: operation.Operation | None = None
         self.asynchronous = asynchronous
         self.deferrable = deferrable
@@ -2580,7 +2612,7 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
                     project_id=self.project_id,
                     region=self.region,
                     gcp_conn_id=self.gcp_conn_id,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     polling_interval_seconds=self.polling_interval_seconds,
                 ),
                 method_name="execute_complete",
@@ -2630,7 +2662,7 @@ class DataprocCreateBatchOperator(GoogleCloudBaseOperator):
 
     @cached_property
     def hook(self) -> DataprocHook:
-        return DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        return DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
 
     def execute_complete(self, context, event=None) -> None:
         """
@@ -2783,7 +2815,8 @@ class DataprocDeleteBatchOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -2791,7 +2824,7 @@ class DataprocDeleteBatchOperator(GoogleCloudBaseOperator):
         "region",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     def __init__(
@@ -2805,6 +2838,7 @@ class DataprocDeleteBatchOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2816,9 +2850,10 @@ class DataprocDeleteBatchOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         self.log.info("Deleting batch: %s", self.batch_id)
         hook.delete_batch(
             batch_id=self.batch_id,
@@ -2853,7 +2888,8 @@ class DataprocGetBatchOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -2861,7 +2897,7 @@ class DataprocGetBatchOperator(GoogleCloudBaseOperator):
         "region",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     operator_extra_links = (DataprocBatchLink(),)
 
@@ -2876,6 +2912,7 @@ class DataprocGetBatchOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -2887,9 +2924,10 @@ class DataprocGetBatchOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         self.log.info("Getting batch: %s", self.batch_id)
         batch = hook.get_batch(
             batch_id=self.batch_id,
@@ -2933,12 +2971,13 @@ class DataprocListBatchesOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param filter: Result filters as specified in ListBatchesRequest
     :param order_by: How to order results as specified in ListBatchesRequest
     """
 
-    template_fields: Sequence[str] = ("region", "project_id", "gcp_conn_id", "impersonation_chain")
+    template_fields: Sequence[str] = ("region", "project_id", "gcp_conn_id", "impersonation_chain", "quota_project_id")
     operator_extra_links = (DataprocBatchesListLink(),)
 
     def __init__(
@@ -2953,6 +2992,7 @@ class DataprocListBatchesOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         filter: str | None = None,
         order_by: str | None = None,
         **kwargs,
@@ -2967,11 +3007,12 @@ class DataprocListBatchesOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.filter = filter
         self.order_by = order_by
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         results = hook.list_batches(
             region=self.region,
             project_id=self.project_id,
@@ -3009,7 +3050,8 @@ class DataprocCancelOperationOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -3017,7 +3059,7 @@ class DataprocCancelOperationOperator(GoogleCloudBaseOperator):
         "region",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     def __init__(
@@ -3031,6 +3073,7 @@ class DataprocCancelOperationOperator(GoogleCloudBaseOperator):
         metadata: Sequence[tuple[str, str]] = (),
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -3042,9 +3085,10 @@ class DataprocCancelOperationOperator(GoogleCloudBaseOperator):
         self.metadata = metadata
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context):
-        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = DataprocHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
 
         self.log.info("Canceling operation: %s", self.operation_name)
         hook.get_operations_client(region=self.region).cancel_operation(name=self.operation_name)
