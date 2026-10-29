@@ -17,7 +17,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest import mock
 
@@ -268,3 +268,23 @@ class TestCloudComposerExternalTaskTrigger:
             },
         )
         assert actual_data == expected_data
+
+    def test_check_task_instances_states_out_of_window(self, external_task_trigger):
+        start_date = datetime(2024, 3, 22, 11, 0, 0, tzinfo=timezone.utc)
+        end_date = datetime(2024, 3, 22, 12, 0, 0, tzinfo=timezone.utc)
+        
+        task_instances = [
+            {
+                "task_id": "test_external_task_id",
+                "dag_id": "test_dag_id",
+                "state": "success",
+                "logical_date": "2024-03-22T13:10:00+00:00",
+            }
+        ]
+        
+        assert not external_task_trigger._check_task_instances_states(
+            task_instances=task_instances,
+            start_date=start_date,
+            end_date=end_date,
+            states=TEST_ALLOWED_STATES,
+        )
