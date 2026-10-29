@@ -200,6 +200,39 @@ class TestCloudComposerDAGRunSensor:
 
         assert not task.poke(context={"logical_date": datetime(2024, 5, 23, 0, 0, 0)})
 
+    def test_check_dag_runs_states_logic(self):
+        from datetime import timezone
+        task = CloudComposerDAGRunSensor(
+            task_id="task-id",
+            project_id=TEST_PROJECT_ID,
+            region=TEST_REGION,
+            environment_id=TEST_ENVIRONMENT_ID,
+            composer_dag_id="test_dag_id",
+            allowed_states=["success"],
+        )
+        task._composer_airflow_version = 2
+
+        # Empty dag runs should return False
+        assert not task._check_dag_runs_states(
+            dag_runs=[],
+            start_date=datetime(2024, 5, 22, 0, 0, 0, tzinfo=timezone.utc),
+            end_date=datetime(2024, 5, 23, 0, 0, 0, tzinfo=timezone.utc),
+        )
+
+        # Dag runs entirely outside range should return False
+        assert not task._check_dag_runs_states(
+            dag_runs=TEST_DAG_RUNS_RESULT("success", "execution_date", "run_id"),
+            start_date=datetime(2024, 5, 20, 0, 0, 0, tzinfo=timezone.utc),
+            end_date=datetime(2024, 5, 21, 0, 0, 0, tzinfo=timezone.utc),
+        )
+
+        # Dag runs inside range should return True if match
+        assert task._check_dag_runs_states(
+            dag_runs=TEST_DAG_RUNS_RESULT("success", "execution_date", "run_id"),
+            start_date=datetime(2024, 5, 22, 0, 0, 0, tzinfo=timezone.utc),
+            end_date=datetime(2024, 5, 23, 0, 0, 0, tzinfo=timezone.utc),
+        )
+
 
 class TestCloudComposerExternalTaskSensor:
     @pytest.mark.parametrize("composer_airflow_version", [2, 3])
