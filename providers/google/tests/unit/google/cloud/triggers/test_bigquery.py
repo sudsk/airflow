@@ -1312,3 +1312,35 @@ class TestBigQueryStreamingBufferEmptyTrigger:
                     dataset_id=TEST_DATASET_ID,
                     table_id=TEST_TABLE_ID,
                 )
+
+    @pytest.mark.asyncio
+    @mock.patch("airflow.providers.google.cloud.triggers.bigquery.BigQueryTableAsyncHook")
+    async def test_is_streaming_buffer_empty_returns_false_during_lag_window(
+        self, mock_hook_cls, streaming_buffer_trigger
+    ):
+        import time
+
+        mock_hook = mock.MagicMock(spec=BigQueryTableAsyncHook)
+        mock_client = mock.MagicMock()
+        now_millis = str(int(time.time() * 1000))
+        mock_client.get = AsyncMock(
+            return_value={
+                "id": "some-table",
+                "creationTime": now_millis,
+                "lastModifiedTime": now_millis,
+            }
+        )
+        mock_hook.get_table_client = AsyncMock(return_value=mock_client)
+
+        async with ClientSession() as session:
+            result = await streaming_buffer_trigger._is_streaming_buffer_empty(
+                hook=mock_hook,
+                session=session,
+                project_id=TEST_GCP_PROJECT_ID,
+                dataset_id=TEST_DATASET_ID,
+                table_id=TEST_TABLE_ID,
+            )
+
+        # Should return False during the metadata lag window (e.g. on the first check)
+        # even if streamingBuffer is absent.
+        assert result is False

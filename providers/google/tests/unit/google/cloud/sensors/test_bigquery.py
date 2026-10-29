@@ -442,3 +442,22 @@ class TestBigQueryStreamingBufferEmptySensor:
     def test_execute_complete_raises_value_error_when_event_is_none(self):
         with pytest.raises(ValueError, match="No event received in trigger callback"):
             _make_streaming_sensor(deferrable=True).execute_complete(context={}, event=None)
+
+    @mock.patch("airflow.providers.google.cloud.sensors.bigquery.BigQueryHook")
+    def test_poke_returns_false_during_metadata_lag_window(self, mock_hook):
+        from datetime import datetime, timezone
+
+        sensor = _make_streaming_sensor(
+            gcp_conn_id=TEST_GCP_CONN_ID,
+            impersonation_chain=TEST_IMPERSONATION_CHAIN,
+        )
+        mock_table = mock.MagicMock(
+            streaming_buffer=None,
+            modified=datetime.now(timezone.utc),
+            created=datetime.now(timezone.utc),
+        )
+        mock_hook.return_value.get_client.return_value.get_table.return_value = mock_table
+
+        # The sensor should return False during the lag window (e.g. on the first poke)
+        # to prevent falsely passing just because streaming_buffer is None.
+        assert sensor.poke(mock.MagicMock()) is False

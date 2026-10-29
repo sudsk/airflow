@@ -432,4 +432,18 @@ class BigQueryStreamingBufferEmptySensor(BaseSensorOperator):
             table = hook.get_client(project_id=self.project_id).get_table(table_ref)
         except NotFound as err:
             raise ValueError(f"Table {table_uri} not found") from err
-        return table.streaming_buffer is None
+        if table.streaming_buffer is not None:
+            return False
+
+        from datetime import datetime, timedelta, timezone
+
+        now = datetime.now(timezone.utc)
+        for time_field in (table.modified, table.created):
+            if isinstance(time_field, datetime):
+                if (now - time_field) < timedelta(seconds=20):
+                    self.log.info(
+                        "Table was modified/created very recently. Assuming metadata lag window."
+                    )
+                    return False
+
+        return True
