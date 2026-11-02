@@ -1600,6 +1600,38 @@ class GCSHook(GoogleBaseHook):
         return to_copy_blobs, to_delete_blobs, to_rewrite_blobs
 
 
+    def add_bucket_iam_binding(
+        self,
+        bucket_name: str,
+        role: str,
+        member: str | None = None,
+        members: Sequence[str] | None = None,
+        user_project: str | None = None,
+    ) -> None:
+        """
+        Add member(s) to a role on a bucket IAM policy.
+
+        :param bucket_name: name of the bucket
+        :param role: the role to grant, e.g. 'roles/storage.objectViewer'
+        :param member: member to add to the role, e.g. 'user:test@example.com'
+        :param members: sequence of members to add to the role
+        :param user_project: (Optional) The project to be billed for this request.
+            Required for Requester Pays buckets.
+        """
+        if (member is None and members is None) or (member is not None and members is not None):
+            raise ValueError("Either member or members must be provided, not both")
+
+        client = self.get_conn()
+        bucket = client.bucket(bucket_name, user_project=user_project)
+        policy = bucket.get_iam_policy(user_project=user_project)
+
+        target_members = [member] if member is not None else members
+        for target_member in target_members:
+            policy[role].add(target_member)
+
+        bucket.set_iam_policy(policy, user_project=user_project)
+        self.log.info("Added IAM binding for role %s in bucket %s", role, bucket_name)
+
 def gcs_object_is_directory(bucket: str) -> bool:
     """Return True if given Google Cloud Storage URL (gs://<bucket>/<blob>) is a directory or empty bucket."""
     _, blob = _parse_gcs_url(bucket)

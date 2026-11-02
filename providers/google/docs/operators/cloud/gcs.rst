@@ -53,6 +53,16 @@ processes all files older than ``data_interval_start``.
     :end-before: [END howto_operator_gcs_timespan_file_transform_operator_Task]
 
 
+.. _howto/operator:GCSBucketAddIamBindingOperator:
+
+GCSBucketAddIamBindingOperator
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Adds IAM role binding to the specified bucket.
+
+For parameter definition, take a look at
+:class:`~airflow.providers.google.cloud.operators.gcs.GCSBucketAddIamBindingOperator`
+
 .. _howto/operator:GCSBucketCreateAclEntryOperator:
 
 GCSBucketCreateAclEntryOperator
