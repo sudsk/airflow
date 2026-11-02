@@ -241,17 +241,19 @@ class DataflowJobStatusTrigger(BaseTrigger):
 
     def __init__(
         self,
-        job_id: str,
-        expected_statuses: set[str],
-        project_id: str | None,
+        job_id: str | None = None,
+        expected_statuses: set[str] | None = None,
+        project_id: str | None = None,
         location: str = DEFAULT_DATAFLOW_LOCATION,
         gcp_conn_id: str = "google_cloud_default",
         poll_sleep: int = 10,
         impersonation_chain: str | Sequence[str] | None = None,
+        job_name: str | None = None,
     ):
         super().__init__()
         self.job_id = job_id
-        self.expected_statuses = expected_statuses
+        self.job_name = job_name
+        self.expected_statuses = expected_statuses if expected_statuses is not None else set()
         self.project_id = project_id
         self.location = location
         self.gcp_conn_id = gcp_conn_id
@@ -264,6 +266,7 @@ class DataflowJobStatusTrigger(BaseTrigger):
             "airflow.providers.google.cloud.triggers.dataflow.DataflowJobStatusTrigger",
             {
                 "job_id": self.job_id,
+                "job_name": self.job_name,
                 "expected_statuses": self.expected_statuses,
                 "project_id": self.project_id,
                 "location": self.location,
@@ -287,24 +290,40 @@ class DataflowJobStatusTrigger(BaseTrigger):
         """
         try:
             while True:
-                job_status = await self.async_hook.get_job_status(
-                    job_id=self.job_id,
-                    project_id=self.project_id,
-                    location=self.location,
-                )
-                if job_status.name in self.expected_statuses:
+                if self.job_id:
+                    job_status = await self.async_hook.get_job_status(
+                        job_id=self.job_id,
+                        project_id=self.project_id,
+                        location=self.location,
+                    )
+                    job_status_name = job_status.name
+                else:
+                    pager = await self.async_hook.list_jobs(
+                        project_id=self.project_id, location=self.location
+                    )
+                    matching_jobs = [job async for job in pager if job.name == self.job_name]
+                    if not matching_jobs:
+                        self.log.info("Sleeping for %s seconds.", self.poll_sleep)
+                        await asyncio.sleep(self.poll_sleep)
+                        continue
+                    
+                    matching_jobs.sort(key=lambda x: getattr(x, "create_time", ""), reverse=True)
+                    latest_job = matching_jobs[0]
+                    job_status_name = latest_job.current_state.name
+
+                if job_status_name in self.expected_statuses:
                     yield TriggerEvent(
                         {
                             "status": "success",
-                            "message": f"Job with id '{self.job_id}' has reached an expected state: {job_status.name}",
+                            "message": f"Job with id '{self.job_id}' has reached an expected state: {job_status_name}",
                         }
                     )
                     return
-                elif job_status.name in DataflowJobStatus.TERMINAL_STATES:
+                elif job_status_name in DataflowJobStatus.TERMINAL_STATES:
                     yield TriggerEvent(
                         {
                             "status": "error",
-                            "message": f"Job with id '{self.job_id}' is already in terminal state: {job_status.name}",
+                            "message": f"Job with id '{self.job_id}' is already in terminal state: {job_status_name}",
                         }
                     )
                     return

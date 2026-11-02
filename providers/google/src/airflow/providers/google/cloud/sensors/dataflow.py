@@ -72,13 +72,15 @@ class DataflowJobStatusSensor(BaseSensorOperator):
 
     template_fields: Sequence[str] = (
         "job_id",
+        "job_name",
         "gcp_conn_id",
     )
 
     def __init__(
         self,
         *,
-        job_id: str,
+        job_id: str | None = None,
+        job_name: str | None = None,
         expected_statuses: set[str] | str,
         project_id: str = PROVIDE_PROJECT_ID,
         location: str = DEFAULT_DATAFLOW_LOCATION,
@@ -90,6 +92,7 @@ class DataflowJobStatusSensor(BaseSensorOperator):
     ) -> None:
         super().__init__(**kwargs)
         self.job_id = job_id
+        self.job_name = job_name
         self.expected_statuses = (
             {expected_statuses} if isinstance(expected_statuses, str) else expected_statuses
         )
@@ -100,26 +103,42 @@ class DataflowJobStatusSensor(BaseSensorOperator):
         self.deferrable = deferrable
         self.poll_interval = poll_interval
 
+        if not (self.job_id is None) ^ (self.job_name is None):
+            raise AirflowException("Exactly one of job_id or job_name must be provided.")
+
     def poke(self, context: Context) -> bool:
         self.log.info(
             "Waiting for job %s to be in one of the states: %s.",
-            self.job_id,
+            self.job_id or self.job_name,
             ", ".join(self.expected_statuses),
         )
 
-        job = self.hook.get_job(
-            job_id=self.job_id,
-            project_id=self.project_id,
-            location=self.location,
-        )
+        if self.job_id:
+            job = self.hook.get_job(
+                job_id=self.job_id,
+                project_id=self.project_id,
+                location=self.location,
+            )
+            job_status = job["currentState"]
+        else:
+            request = self.hook.get_conn().projects().locations().jobs().list(projectId=self.project_id, location=self.location)
+            jobs = []
+            while request is not None:
+                response = request.execute(num_retries=self.hook.num_retries)
+                jobs.extend([j for j in response.get("jobs", []) if j.get("name") == self.job_name])
+                request = self.hook.get_conn().projects().locations().jobs().list_next(previous_request=request, previous_response=response)
+            if not jobs:
+                return False
+            jobs.sort(key=lambda x: x.get("createTime", ""), reverse=True)
+            job = jobs[0]
+            job_status = job["currentState"]
 
-        job_status = job["currentState"]
-        self.log.debug("Current job status for job %s: %s.", self.job_id, job_status)
+        self.log.debug("Current job status for job %s: %s.", self.job_id or self.job_name, job_status)
 
         if job_status in self.expected_statuses:
             return True
         if job_status in DataflowJobStatus.TERMINAL_STATES:
-            message = f"Job with id '{self.job_id}' is already in terminal state: {job_status}"
+            message = f"Job with id '{self.job_id or self.job_name}' is already in terminal state: {job_status}"
             raise AirflowException(message)
 
         return False
@@ -133,6 +152,7 @@ class DataflowJobStatusSensor(BaseSensorOperator):
                 timeout=self.execution_timeout,
                 trigger=DataflowJobStatusTrigger(
                     job_id=self.job_id,
+                    job_name=self.job_name,
                     expected_statuses=self.expected_statuses,
                     project_id=self.project_id,
                     location=self.location,

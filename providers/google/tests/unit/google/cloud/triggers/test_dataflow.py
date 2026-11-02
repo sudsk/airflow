@@ -831,6 +831,7 @@ class TestDataflowJobStatusTrigger:
             {
                 "project_id": PROJECT_ID,
                 "job_id": JOB_ID,
+                "job_name": None,
                 "expected_statuses": {JobState.JOB_STATE_DONE, JobState.JOB_STATE_FAILED},
                 "location": LOCATION,
                 "gcp_conn_id": GCP_CONN_ID,
@@ -840,6 +841,77 @@ class TestDataflowJobStatusTrigger:
         )
         actual_data = dataflow_job_status_trigger.serialize()
         assert actual_data == expected_data
+
+    def test_serialize_with_job_name(self):
+        trigger = DataflowJobStatusTrigger(
+            project_id=PROJECT_ID,
+            job_name="test_job_name",
+            expected_statuses={JobState.JOB_STATE_DONE, JobState.JOB_STATE_FAILED},
+            location=LOCATION,
+            gcp_conn_id=GCP_CONN_ID,
+            poll_sleep=POLL_SLEEP,
+            impersonation_chain=IMPERSONATION_CHAIN,
+        )
+        expected_data = (
+            "airflow.providers.google.cloud.triggers.dataflow.DataflowJobStatusTrigger",
+            {
+                "project_id": PROJECT_ID,
+                "job_id": None,
+                "job_name": "test_job_name",
+                "expected_statuses": {JobState.JOB_STATE_DONE, JobState.JOB_STATE_FAILED},
+                "location": LOCATION,
+                "gcp_conn_id": GCP_CONN_ID,
+                "poll_sleep": POLL_SLEEP,
+                "impersonation_chain": IMPERSONATION_CHAIN,
+            },
+        )
+        actual_data = trigger.serialize()
+        assert actual_data == expected_data
+
+    @pytest.mark.asyncio
+    @mock.patch("airflow.providers.google.cloud.hooks.dataflow.AsyncDataflowHook.list_jobs")
+    async def test_run_yields_success_event_with_job_name(
+        self,
+        mock_list_jobs,
+    ):
+        trigger = DataflowJobStatusTrigger(
+            project_id=PROJECT_ID,
+            job_name="test_job_name",
+            expected_statuses={DataflowJobStatus.JOB_STATE_DONE},
+            location=LOCATION,
+            gcp_conn_id=GCP_CONN_ID,
+            poll_sleep=POLL_SLEEP,
+            impersonation_chain=IMPERSONATION_CHAIN,
+        )
+
+        mock_job1 = mock.MagicMock()
+        mock_job1.name = "test_job_name"
+        mock_job1.current_state.name = "JOB_STATE_RUNNING"
+        mock_job1.create_time = "2023-01-01T00:00:00Z"
+
+        mock_job2 = mock.MagicMock()
+        mock_job2.name = "test_job_name"
+        mock_job2.current_state.name = "JOB_STATE_DONE"
+        mock_job2.create_time = "2023-01-02T00:00:00Z"
+
+        async def mock_pager():
+            yield mock_job1
+            yield mock_job2
+
+        class MagicMockPager:
+            def __aiter__(self):
+                return mock_pager()
+
+        mock_list_jobs.return_value = MagicMockPager()
+
+        expected_event = TriggerEvent(
+            {
+                "status": "success",
+                "message": "Job with id 'None' has reached an expected state: JOB_STATE_DONE",
+            }
+        )
+        actual_event = await trigger.run().asend(None)
+        assert actual_event == expected_event
 
     @pytest.mark.parametrize(
         ("attr", "expected"),
