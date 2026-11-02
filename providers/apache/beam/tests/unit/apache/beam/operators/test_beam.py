@@ -1041,6 +1041,86 @@ class TestBeamRunPythonPipelineOperatorAsync:
         )
         beam_hook_mock.return_value.start_python_pipeline.assert_called_once()
 
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_when_job_id_is_none_resolves_job_by_name(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """
+        Test that when self.dataflow_job_id is None because subprocess output did not match JOB_ID_PATTERN,
+        the operator falls back to resolving the job by name before deferring, and defers with a valid job_id.
+        """
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunPythonPipelineOperator(
+            runner="DataflowRunner",
+            dataflow_config=dataflow_config,
+            **self.default_op_kwargs,
+        )
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            exception_msg = (
+                "GoogleBaseLink.persist method call with no extra value is Deprecated for Airflow 3."
+                " The method calls (only with context) needs to be removed after the Airflow 3 Migration"
+                " completed!"
+            )
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id is not None
+        assert op.dataflow_job_id is not None
+
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_with_extracted_job_id(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """
+        Test that when self.dataflow_job_id is extracted by callback from launcher output,
+        the trigger is deferred with that job_id.
+        """
+        def set_job_id(*args, **kwargs):
+            if "process_line_callback" in kwargs and kwargs["process_line_callback"]:
+                kwargs["process_line_callback"](f"Submitted job: {JOB_ID}")
+
+        beam_hook_mock.return_value.start_python_pipeline.side_effect = set_job_id
+
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunPythonPipelineOperator(
+            runner="DataflowRunner",
+            dataflow_config=dataflow_config,
+            **self.default_op_kwargs,
+        )
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            exception_msg = (
+                "GoogleBaseLink.persist method call with no extra value is Deprecated for Airflow 3."
+                " The method calls (only with context) needs to be removed after the Airflow 3 Migration"
+                " completed!"
+            )
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id == JOB_ID
+        assert op.dataflow_job_id == JOB_ID
+
     @mock.patch(BEAM_OPERATOR_PATH.format("DataflowJobLink.persist"))
     @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
     @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
@@ -1076,6 +1156,7 @@ class TestBeamRunPythonPipelineOperatorAsync:
                 pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
             ):
                 op.execute(mock.MagicMock())
+        op.dataflow_job_id = None
         op.on_kill()
         dataflow_cancel_job.assert_not_called()
 
@@ -1169,6 +1250,84 @@ class TestBeamRunJavaPipelineOperatorAsync:
             wait_until_finished=dataflow_config.wait_until_finished,
         )
         beam_hook_mock.return_value.start_python_pipeline.assert_not_called()
+
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_when_job_id_is_none_resolves_job_by_name(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """
+        Test that when self.dataflow_job_id is None because subprocess output did not match JOB_ID_PATTERN,
+        the operator falls back to resolving the job by name before deferring, and defers with a valid job_id.
+        """
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunJavaPipelineOperator(
+            runner="DataflowRunner", dataflow_config=dataflow_config, **self.default_op_kwargs
+        )
+        dataflow_hook_mock.return_value.is_job_dataflow_running.return_value = False
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            exception_msg = (
+                "GoogleBaseLink.persist method call with no extra value is Deprecated for Airflow 3."
+                " The method calls (only with context) needs to be removed after the Airflow 3 Migration"
+                " completed!"
+            )
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id is not None
+        assert op.dataflow_job_id is not None
+
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_with_extracted_job_id(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """
+        Test that when self.dataflow_job_id is extracted by callback from launcher output,
+        the trigger is deferred with that job_id.
+        """
+        def set_job_id(*args, **kwargs):
+            if "process_line_callback" in kwargs and kwargs["process_line_callback"]:
+                kwargs["process_line_callback"](f"Submitted job: {JOB_ID}")
+
+        beam_hook_mock.return_value.start_java_pipeline.side_effect = set_job_id
+
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunJavaPipelineOperator(
+            runner="DataflowRunner", dataflow_config=dataflow_config, **self.default_op_kwargs
+        )
+        dataflow_hook_mock.return_value.is_job_dataflow_running.return_value = False
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            exception_msg = (
+                "GoogleBaseLink.persist method call with no extra value is Deprecated for Airflow 3."
+                " The method calls (only with context) needs to be removed after the Airflow 3 Migration"
+                " completed!"
+            )
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id == JOB_ID
+        assert op.dataflow_job_id == JOB_ID
 
     @mock.patch(BEAM_OPERATOR_PATH.format("DataflowJobLink.persist"))
     @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))

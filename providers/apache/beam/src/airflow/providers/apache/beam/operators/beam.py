@@ -475,6 +475,13 @@ class BeamRunPythonPipelineOperator(BeamBasePipelineOperator):
         )
 
         if self.deferrable:
+            if not self.dataflow_job_id and self.dataflow_job_name:
+                self.dataflow_job_id = self.dataflow_hook.get_job_id(
+                    job_name=self.dataflow_job_name,
+                    location=self.dataflow_config.location,
+                    project_id=self.dataflow_config.project_id,
+                )
+
             trigger_args = {
                 "job_id": self.dataflow_job_id,
                 "project_id": self.dataflow_config.project_id,
@@ -672,6 +679,13 @@ class BeamRunJavaPipelineOperator(BeamBasePipelineOperator):
                     project_id=self.dataflow_config.project_id,
                 )
                 if self.deferrable:
+                    if not self.dataflow_job_id:
+                        self.dataflow_job_id = self.dataflow_hook.get_job_id(
+                            job_name=self.dataflow_job_name,
+                            location=self.dataflow_config.location,
+                            project_id=self.dataflow_config.project_id,
+                        )
+
                     trigger_args = {
                         "job_id": self.dataflow_job_id,
                         "project_id": self.dataflow_config.project_id,
