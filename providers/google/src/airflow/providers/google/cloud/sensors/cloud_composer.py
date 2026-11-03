@@ -218,6 +218,7 @@ class CloudComposerDAGRunSensor(BaseSensorOperator):
         start_date: datetime,
         end_date: datetime,
     ) -> bool:
+        found_runs_in_window = False
         for dag_run in dag_runs:
             if (
                 start_date.timestamp()
@@ -225,9 +226,11 @@ class CloudComposerDAGRunSensor(BaseSensorOperator):
                     dag_run["execution_date" if self._composer_airflow_version < 3 else "logical_date"]
                 ).timestamp()
                 < end_date.timestamp()
-            ) and dag_run["state"] not in self.allowed_states:
-                return False
-        return True
+            ):
+                found_runs_in_window = True
+                if dag_run["state"] not in self.allowed_states:
+                    return False
+        return found_runs_in_window
 
     def _get_composer_airflow_version(self) -> int:
         """Return Composer Airflow version."""
