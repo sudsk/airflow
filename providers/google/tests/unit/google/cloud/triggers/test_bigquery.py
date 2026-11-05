@@ -1178,6 +1178,7 @@ class TestBigQueryStreamingBufferEmptyTrigger:
             "gcp_conn_id": TEST_GCP_CONN_ID,
             "poll_interval": POLLING_PERIOD_SECONDS,
             "impersonation_chain": TEST_IMPERSONATION_CHAIN,
+            "creation_time": streaming_buffer_trigger.creation_time,
         }
 
     @mock.patch("airflow.providers.google.cloud.triggers.bigquery.BigQueryTableAsyncHook")
@@ -1250,6 +1251,10 @@ class TestBigQueryStreamingBufferEmptyTrigger:
         mock_client = mock.MagicMock()
         mock_client.get = AsyncMock(return_value={"id": "some-table"})
         mock_hook.get_table_client = AsyncMock(return_value=mock_client)
+
+        from airflow.utils.timezone import utcnow
+        from datetime import timedelta
+        streaming_buffer_trigger.creation_time = (utcnow() - timedelta(seconds=20)).isoformat()
 
         async with ClientSession() as session:
             result = await streaming_buffer_trigger._is_streaming_buffer_empty(

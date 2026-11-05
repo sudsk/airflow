@@ -912,6 +912,7 @@ class BigQueryStreamingBufferEmptyTrigger(BaseTrigger):
         gcp_conn_id: str,
         poll_interval: float = 30.0,
         impersonation_chain: str | Sequence[str] | None = None,
+        creation_time: str | None = None,
     ):
         super().__init__()
         self.project_id = project_id
@@ -920,6 +921,9 @@ class BigQueryStreamingBufferEmptyTrigger(BaseTrigger):
         self.gcp_conn_id = gcp_conn_id
         self.poll_interval = poll_interval
         self.impersonation_chain = impersonation_chain
+        
+        from airflow.utils.timezone import utcnow
+        self.creation_time = creation_time or utcnow().isoformat()
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         return (
@@ -931,6 +935,7 @@ class BigQueryStreamingBufferEmptyTrigger(BaseTrigger):
                 "gcp_conn_id": self.gcp_conn_id,
                 "poll_interval": self.poll_interval,
                 "impersonation_chain": self.impersonation_chain,
+                "creation_time": self.creation_time,
             },
         )
 
@@ -989,4 +994,13 @@ class BigQueryStreamingBufferEmptyTrigger(BaseTrigger):
         if not response:
             raise ValueError(f"Table {project_id}.{dataset_id}.{table_id} does not exist")
 
-        return response.get("streamingBuffer") is None
+        if response.get("streamingBuffer") is None:
+            from airflow.utils.timezone import utcnow
+            from datetime import timedelta, datetime
+            
+            created_at = datetime.fromisoformat(self.creation_time)
+            if utcnow() - created_at >= timedelta(seconds=15):
+                return True
+            self.log.info("Buffer appears empty, but waiting for metadata consistency window to pass.")
+
+        return False

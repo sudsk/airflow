@@ -432,4 +432,12 @@ class BigQueryStreamingBufferEmptySensor(BaseSensorOperator):
             table = hook.get_client(project_id=self.project_id).get_table(table_ref)
         except NotFound as err:
             raise ValueError(f"Table {table_uri} not found") from err
-        return table.streaming_buffer is None
+
+        if table.streaming_buffer is None:
+            from airflow.utils.timezone import utcnow
+            from datetime import timedelta
+            if utcnow() - context["ti"].start_date >= timedelta(seconds=15):
+                return True
+            self.log.info("Buffer appears empty, but waiting for metadata consistency window to pass.")
+
+        return False

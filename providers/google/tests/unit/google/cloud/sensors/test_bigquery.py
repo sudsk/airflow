@@ -354,7 +354,9 @@ class TestBigQueryStreamingBufferEmptySensor:
         mock_table = mock.MagicMock(streaming_buffer=None)
         mock_hook.return_value.get_client.return_value.get_table.return_value = mock_table
 
-        assert sensor.poke(mock.MagicMock()) is True
+        from datetime import datetime, timedelta, timezone
+        context = {"ti": mock.MagicMock(start_date=datetime.now(timezone.utc) - timedelta(seconds=20))}
+        assert sensor.poke(context) is True
 
         mock_hook.assert_called_once_with(
             gcp_conn_id=TEST_GCP_CONN_ID,
@@ -401,7 +403,9 @@ class TestBigQueryStreamingBufferEmptySensor:
             streaming_buffer=None
         )
 
-        _make_streaming_sensor(deferrable=True).execute(mock.MagicMock())
+        from datetime import datetime, timedelta, timezone
+        context = {"ti": mock.MagicMock(start_date=datetime.now(timezone.utc) - timedelta(seconds=20))}
+        _make_streaming_sensor(deferrable=True).execute(context)
 
         mock_defer.assert_not_called()
 
