@@ -151,6 +151,53 @@ class TestCloudComposerDAGRunSensor:
     @pytest.mark.parametrize("use_rest_api", [True, False])
     @pytest.mark.parametrize("composer_airflow_version", [2, 3])
     @mock.patch("airflow.providers.google.cloud.sensors.cloud_composer.CloudComposerHook")
+    def test_no_runs_in_execution_range(self, mock_hook, composer_airflow_version, use_rest_api):
+        mock_hook.return_value.wait_command_execution_result.return_value = TEST_EXEC_RESULT(
+            "success", "execution_date" if composer_airflow_version < 3 else "logical_date"
+        )
+        mock_hook.return_value.get_dag_runs.return_value = TEST_GET_RESULT(
+            "success", "execution_date" if composer_airflow_version < 3 else "logical_date"
+        )
+        with pytest.warns(AirflowProviderDeprecationWarning):
+            task = CloudComposerDAGRunSensor(
+                task_id="task-id",
+                project_id=TEST_PROJECT_ID,
+                region=TEST_REGION,
+                environment_id=TEST_ENVIRONMENT_ID,
+                composer_dag_id="test_dag_id",
+                allowed_states=["success"],
+                use_rest_api=use_rest_api,
+            )
+        task._composer_airflow_version = composer_airflow_version
+
+        # logical_date is far in the future, so the dag_run in TEST_GET_RESULT (2024-05-22)
+        # falls outside the start_date and end_date. Thus the method will incorrectly return True
+        # under the current buggy code, but should correctly return False.
+        assert not task.poke(context={"logical_date": datetime(2024, 5, 25, 0, 0, 0)})
+
+    def test_check_dag_runs_states_empty(self):
+        with pytest.warns(AirflowProviderDeprecationWarning):
+            task = CloudComposerDAGRunSensor(
+                task_id="task-id",
+                project_id=TEST_PROJECT_ID,
+                region=TEST_REGION,
+                environment_id=TEST_ENVIRONMENT_ID,
+                composer_dag_id="test_dag_id",
+                allowed_states=["success"],
+                use_rest_api=True,
+            )
+        task._composer_airflow_version = 3
+
+        # Method should return False if dag_runs is empty instead of defaulting to True
+        assert not task._check_dag_runs_states(
+            dag_runs=[],
+            start_date=datetime(2024, 5, 24, 0, 0, 0),
+            end_date=datetime(2024, 5, 25, 0, 0, 0),
+        )
+
+    @pytest.mark.parametrize("use_rest_api", [True, False])
+    @pytest.mark.parametrize("composer_airflow_version", [2, 3])
+    @mock.patch("airflow.providers.google.cloud.sensors.cloud_composer.CloudComposerHook")
     def test_composer_dag_run_id_wait_ready(self, mock_hook, composer_airflow_version, use_rest_api):
         mock_hook.return_value.wait_command_execution_result.return_value = TEST_EXEC_RESULT(
             "success", "execution_date" if composer_airflow_version < 3 else "logical_date"
