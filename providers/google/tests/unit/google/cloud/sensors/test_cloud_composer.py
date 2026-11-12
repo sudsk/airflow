@@ -148,6 +148,37 @@ class TestCloudComposerDAGRunSensor:
 
         assert not task.poke(context={"logical_date": datetime(2024, 5, 23, 0, 0, 0)})
 
+    @pytest.mark.parametrize("composer_airflow_version", [2, 3])
+    @mock.patch("airflow.providers.google.cloud.sensors.cloud_composer.CloudComposerHook")
+    def test_dag_runs_outside_window(self, mock_hook, composer_airflow_version):
+        date_key = "execution_date" if composer_airflow_version < 3 else "logical_date"
+        mock_hook.return_value.get_dag_runs.return_value = {
+            "dag_runs": [
+                {
+                    "dag_id": "test_dag_id",
+                    "dag_run_id": "run_outside_window",
+                    "state": "success",
+                    date_key: "2024-05-20T11:10:00+00:00",
+                    "start_date": "2024-05-20T11:20:01.531988+00:00",
+                    "end_date": "2024-05-20T11:20:11.997479+00:00",
+                }
+            ],
+            "total_entries": 1,
+        }
+        task = CloudComposerDAGRunSensor(
+            task_id="task-id",
+            project_id=TEST_PROJECT_ID,
+            region=TEST_REGION,
+            environment_id=TEST_ENVIRONMENT_ID,
+            composer_dag_id="test_dag_id",
+            allowed_states=["success"],
+        )
+        task._composer_airflow_version = composer_airflow_version
+
+        # Context logical_date is 2024-05-23, default window is (2024-05-22, 2024-05-23).
+        # The dag run at 2024-05-20 falls outside this window, so poke should return False.
+        assert not task.poke(context={"logical_date": datetime(2024, 5, 23, 0, 0, 0)})
+
     @pytest.mark.parametrize("use_rest_api", [True, False])
     @pytest.mark.parametrize("composer_airflow_version", [2, 3])
     @mock.patch("airflow.providers.google.cloud.sensors.cloud_composer.CloudComposerHook")
