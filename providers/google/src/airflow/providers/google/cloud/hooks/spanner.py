@@ -386,9 +386,9 @@ class SpannerHook(GoogleBaseHook, DbApiHook):
         self,
         instance_id: str,
         database_id: str,
-        queries: list[str],
+        queries: list[str] | str,
         project_id: str,
-    ) -> None:
+    ) -> list[int] | int:
         """
         Execute an arbitrary DML query (INSERT, UPDATE, DELETE).
 
@@ -399,11 +399,12 @@ class SpannerHook(GoogleBaseHook, DbApiHook):
             database. If set to None or missing, the default project_id from the Google Cloud connection
             is used.
         """
-        self._get_client(project_id=project_id).instance(instance_id=instance_id).database(
+        return self._get_client(project_id=project_id).instance(instance_id=instance_id).database(
             database_id=database_id
         ).run_in_transaction(lambda transaction: self._execute_sql_in_transaction(transaction, queries))
 
     @staticmethod
-    def _execute_sql_in_transaction(transaction: Transaction, queries: list[str]):
-        for sql in queries:
-            transaction.execute_update(sql)
+    def _execute_sql_in_transaction(transaction: Transaction, queries: list[str] | str) -> list[int] | int:
+        if isinstance(queries, str):
+            return transaction.execute_update(queries)
+        return [transaction.execute_update(sql) for sql in queries]

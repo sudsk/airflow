@@ -264,7 +264,7 @@ class SpannerQueryDatabaseInstanceOperator(GoogleCloudBaseOperator):
         if not self.query:
             raise AirflowException("The required parameter 'query' is empty")
 
-    def execute(self, context: Context):
+    def execute(self, context: Context) -> list[int] | int:
         hook = SpannerHook(
             gcp_conn_id=self.gcp_conn_id,
             impersonation_chain=self.impersonation_chain,
@@ -281,7 +281,7 @@ class SpannerQueryDatabaseInstanceOperator(GoogleCloudBaseOperator):
             self.database_id,
         )
         self.log.info(queries)
-        hook.execute_dml(
+        result = hook.execute_dml(
             project_id=self.project_id,
             instance_id=self.instance_id,
             database_id=self.database_id,
@@ -293,6 +293,7 @@ class SpannerQueryDatabaseInstanceOperator(GoogleCloudBaseOperator):
             database_id=self.database_id,
             project_id=self.project_id or hook.project_id,
         )
+        return result
 
     @staticmethod
     def sanitize_queries(queries: list[str]) -> None:
