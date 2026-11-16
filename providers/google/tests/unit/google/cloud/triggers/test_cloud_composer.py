@@ -268,3 +268,21 @@ class TestCloudComposerExternalTaskTrigger:
             },
         )
         assert actual_data == expected_data
+
+    def test_check_task_instances_states_out_of_window(self, external_task_trigger):
+        date_key = "execution_date" if external_task_trigger.composer_airflow_version < 3 else "logical_date"
+        task_instances = [
+            {
+                "task_id": TEST_COMPOSER_EXTERNAL_TASK_IDS[0],
+                "dag_id": TEST_COMPOSER_DAG_ID,
+                "state": "success",
+                date_key: "2024-03-21T10:00:00+00:00",
+                "start_date": "2024-03-21T10:20:00+00:00",
+                "end_date": "2024-03-21T10:30:00+00:00",
+            }
+        ]
+        
+        # Test that out-of-window instances do not return True
+        assert not external_task_trigger._check_task_instances_states(
+            task_instances, TEST_START_DATE, TEST_END_DATE, TEST_ALLOWED_STATES
+        )
