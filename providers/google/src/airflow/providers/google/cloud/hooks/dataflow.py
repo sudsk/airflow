@@ -1234,6 +1234,37 @@ class DataflowHook(GoogleBaseHook):
         job_controller.wait_for_done()
 
     @GoogleBaseHook.fallback_to_default_project_id
+    def get_job_id_by_name(
+        self,
+        job_name: str,
+        project_id: str,
+        location: str = DEFAULT_DATAFLOW_LOCATION,
+    ) -> str | None:
+        """
+        Get the job ID of a job by name.
+
+        :param job_name: Name prefix of the job.
+        :param project_id: Optional, Google Cloud project ID.
+        :param location: Location of the job.
+        :return: Job ID or None.
+        """
+        jobs_controller = _DataflowJobsController(
+            dataflow=self.get_conn(),
+            project_number=project_id,
+            name=job_name,
+            location=location,
+            poll_sleep=self.poll_sleep,
+            num_retries=self.num_retries,
+        )
+        try:
+            jobs = jobs_controller._get_current_jobs()
+            if jobs:
+                return jobs[0].get("id")
+        except Exception:
+            self.log.warning("Could not find job ID for job name %s", job_name)
+        return None
+
+    @GoogleBaseHook.fallback_to_default_project_id
     def is_job_done(self, location: str, project_id: str, job_id: str) -> bool:
         """
         Check that Dataflow job is started(for streaming job) or finished(for batch job).

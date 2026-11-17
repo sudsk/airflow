@@ -1041,6 +1041,38 @@ class TestBeamRunPythonPipelineOperatorAsync:
         )
         beam_hook_mock.return_value.start_python_pipeline.assert_called_once()
 
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_resolves_job_id_when_not_in_stdout(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """Test that when stdout does not emit JOB_ID_PATTERN, job_id is resolved before deferring."""
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunPythonPipelineOperator(
+            runner="DataflowRunner",
+            dataflow_config=dataflow_config,
+            **self.default_op_kwargs,
+        )
+        dataflow_hook_mock.return_value.get_job_id_by_name.return_value = JOB_ID
+        dataflow_hook_mock.return_value.get_job.return_value = {"id": JOB_ID}
+
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id is not None
+        assert exc.value.trigger.job_id == JOB_ID
+
     @mock.patch(BEAM_OPERATOR_PATH.format("DataflowJobLink.persist"))
     @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
     @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
@@ -1061,21 +1093,9 @@ class TestBeamRunPythonPipelineOperatorAsync:
     @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
     def test_on_kill_direct_runner(self, _, dataflow_mock, __):
         dataflow_cancel_job = dataflow_mock.return_value.cancel_job
-        op = BeamRunPythonPipelineOperator(runner="DataflowRunner", **self.default_op_kwargs)
-        if AIRFLOW_V_3_0_PLUS:
-            with pytest.raises(TaskDeferred):
-                op.execute(mock.MagicMock())
-        else:
-            exception_msg = (
-                "GoogleBaseLink.persist method call with no extra value is Deprecated for Airflow 3."
-                " The method calls (only with context) needs to be removed after the Airflow 3 Migration"
-                " completed!"
-            )
-            with (
-                pytest.raises(TaskDeferred),
-                pytest.warns(AirflowProviderDeprecationWarning, match=exception_msg),
-            ):
-                op.execute(mock.MagicMock())
+        op = BeamRunPythonPipelineOperator(**self.default_op_kwargs)
+        with pytest.raises(TaskDeferred):
+            op.execute(mock.MagicMock())
         op.on_kill()
         dataflow_cancel_job.assert_not_called()
 
@@ -1169,6 +1189,37 @@ class TestBeamRunJavaPipelineOperatorAsync:
             wait_until_finished=dataflow_config.wait_until_finished,
         )
         beam_hook_mock.return_value.start_python_pipeline.assert_not_called()
+
+    @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("DataflowHook"))
+    @mock.patch(BEAM_OPERATOR_PATH.format("GCSHook"))
+    def test_exec_dataflow_runner_resolves_job_id_when_not_in_stdout(
+        self, gcs_hook_mock, dataflow_hook_mock, beam_hook_mock
+    ):
+        """Test that when stdout does not emit JOB_ID_PATTERN, job_id is resolved before deferring."""
+        dataflow_config = DataflowConfiguration(
+            impersonation_chain=TEST_IMPERSONATION_ACCOUNT, poll_sleep=TEST_POLL_SLEEP
+        )
+        op = BeamRunJavaPipelineOperator(
+            runner="DataflowRunner", dataflow_config=dataflow_config, **self.default_op_kwargs
+        )
+        dataflow_hook_mock.return_value.is_job_dataflow_running.return_value = False
+        dataflow_hook_mock.return_value.get_job_id_by_name.return_value = JOB_ID
+        dataflow_hook_mock.return_value.get_job.return_value = {"id": JOB_ID}
+
+        magic_mock = mock.MagicMock()
+        if AIRFLOW_V_3_0_PLUS:
+            with pytest.raises(TaskDeferred) as exc:
+                op.execute(context=magic_mock)
+        else:
+            with (
+                pytest.raises(TaskDeferred) as exc,
+                pytest.warns(AirflowProviderDeprecationWarning),
+            ):
+                op.execute(context=magic_mock)
+
+        assert exc.value.trigger.job_id is not None
+        assert exc.value.trigger.job_id == JOB_ID
 
     @mock.patch(BEAM_OPERATOR_PATH.format("DataflowJobLink.persist"))
     @mock.patch(BEAM_OPERATOR_PATH.format("BeamHook"))

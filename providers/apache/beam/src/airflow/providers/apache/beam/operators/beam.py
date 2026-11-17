@@ -467,6 +467,13 @@ class BeamRunPythonPipelineOperator(BeamBasePipelineOperator):
         )
 
         location = self.dataflow_config.location or DEFAULT_DATAFLOW_LOCATION
+        if self.deferrable and not self.dataflow_job_id:
+            self.dataflow_job_id = self.dataflow_hook.get_job_id_by_name(
+                job_name=self.dataflow_job_name,
+                project_id=self.dataflow_config.project_id,
+                location=location,
+            )
+
         DataflowJobLink.persist(
             context=context,
             region=self.dataflow_config.location,
@@ -665,6 +672,12 @@ class BeamRunJavaPipelineOperator(BeamBasePipelineOperator):
                 is_dataflow_job_id_exist_callback=self.is_dataflow_job_id_exist_callback,
             )
             if self.dataflow_job_name and self.dataflow_config.location:
+                if self.deferrable and not self.dataflow_job_id:
+                    self.dataflow_job_id = self.dataflow_hook.get_job_id_by_name(
+                        job_name=self.dataflow_job_name,
+                        project_id=self.dataflow_config.project_id,
+                        location=self.dataflow_config.location,
+                    )
                 DataflowJobLink.persist(
                     context=context,
                     region=self.dataflow_config.location,
