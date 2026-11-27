@@ -145,7 +145,7 @@ class _BigQueryDbHookMixin:
             gcp_conn_id=self.gcp_conn_id,
             use_legacy_sql=self.use_legacy_sql,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             labels=self.labels,
         )
 
@@ -222,7 +222,8 @@ class BigQueryCheckOperator(
         originating account the Service Account Token Creator IAM role. If set
         as a sequence, the identities from the list must grant Service Account
         Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account. (templated)
+        account from the list granting this role to the originating account. (templated)    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param labels: a dictionary containing labels for the table, passed to BigQuery.
     :param encryption_configuration: (Optional) Custom encryption configuration (e.g., Cloud KMS keys).
 
@@ -246,7 +247,7 @@ class BigQueryCheckOperator(
     template_fields: Sequence[str] = (
         "sql",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "labels",
         "query_params",
         "conn_id",
@@ -264,6 +265,7 @@ class BigQueryCheckOperator(
         use_legacy_sql: bool | ArgNotSet = NOTSET,
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         labels: dict | None = None,
         encryption_configuration: dict | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
@@ -276,6 +278,7 @@ class BigQueryCheckOperator(
         self.use_legacy_sql = _resolve_use_legacy_sql(use_legacy_sql)
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.labels = labels
         self.encryption_configuration = encryption_configuration
         self.deferrable = deferrable
@@ -309,7 +312,7 @@ class BigQueryCheckOperator(
         else:
             hook = BigQueryHook(
                 gcp_conn_id=self.gcp_conn_id,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 use_legacy_sql=self.use_legacy_sql,
             )
             if self.project_id is None:
@@ -325,7 +328,7 @@ class BigQueryCheckOperator(
                         project_id=self.project_id,
                         location=self.location or hook.location,
                         poll_interval=self.poll_interval,
-                        impersonation_chain=self.impersonation_chain,
+                        impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     ),
                     method_name="execute_complete",
                 )
@@ -392,7 +395,8 @@ class BigQueryValueCheckOperator(
         originating account the Service Account Token Creator IAM role. If set
         as a sequence, the identities from the list must grant Service Account
         Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account. (templated)
+        account from the list granting this role to the originating account. (templated)    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param labels: a dictionary containing labels for the table, passed to BigQuery.
     :param deferrable: Run operator in the deferrable mode.
     :param poll_interval: (Deferrable mode only) polling period in seconds to
@@ -404,7 +408,7 @@ class BigQueryValueCheckOperator(
         "sql",
         "gcp_conn_id",
         "pass_value",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "labels",
         "conn_id",
     )
@@ -424,6 +428,7 @@ class BigQueryValueCheckOperator(
         use_legacy_sql: bool | ArgNotSet = NOTSET,
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         labels: dict | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         poll_interval: float = 4.0,
@@ -435,6 +440,7 @@ class BigQueryValueCheckOperator(
         self.use_legacy_sql = _resolve_use_legacy_sql(use_legacy_sql)
         self.encryption_configuration = encryption_configuration
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.labels = labels
         self.deferrable = deferrable
         self.poll_interval = poll_interval
@@ -469,7 +475,7 @@ class BigQueryValueCheckOperator(
         else:
             hook = BigQueryHook(
                 gcp_conn_id=self.gcp_conn_id,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 use_legacy_sql=self.use_legacy_sql,
             )
             if self.project_id is None:
@@ -488,7 +494,7 @@ class BigQueryValueCheckOperator(
                         pass_value=self.pass_value,
                         tolerance=self.tol,
                         poll_interval=self.poll_interval,
-                        impersonation_chain=self.impersonation_chain,
+                        impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     ),
                     method_name="execute_complete",
                 )
@@ -560,7 +566,8 @@ class BigQueryIntervalCheckOperator(
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param labels: a dictionary containing labels for the table, passed to BigQuery
     :param deferrable: Run operator in the deferrable mode
     :param poll_interval: (Deferrable mode only) polling period in seconds to check for the status of job.
@@ -573,7 +580,7 @@ class BigQueryIntervalCheckOperator(
         "gcp_conn_id",
         "sql1",
         "sql2",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "labels",
         "conn_id",
     )
@@ -592,6 +599,7 @@ class BigQueryIntervalCheckOperator(
         location: str | None = None,
         encryption_configuration: dict | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         labels: dict | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         poll_interval: float = 4.0,
@@ -611,6 +619,7 @@ class BigQueryIntervalCheckOperator(
         self.location = location
         self.encryption_configuration = encryption_configuration
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.labels = labels
         self.project_id = project_id
         self.deferrable = deferrable
@@ -639,7 +648,7 @@ class BigQueryIntervalCheckOperator(
         else:
             hook = BigQueryHook(
                 gcp_conn_id=self.gcp_conn_id,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 use_legacy_sql=self.use_legacy_sql,
             )
             self.log.info("Using ratio formula: %s", self.ratio_formula)
@@ -668,7 +677,7 @@ class BigQueryIntervalCheckOperator(
                     ratio_formula=self.ratio_formula,
                     ignore_zero=self.ignore_zero,
                     poll_interval=self.poll_interval,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 ),
                 method_name="execute_complete",
             )
@@ -724,7 +733,8 @@ class BigQueryColumnCheckOperator(
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param labels: a dictionary containing labels for the table, passed to BigQuery
     :param project_id: Google Cloud Project where the job is running
     """
@@ -747,6 +757,7 @@ class BigQueryColumnCheckOperator(
         use_legacy_sql: bool | ArgNotSet = NOTSET,
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         labels: dict | None = None,
         **kwargs,
     ) -> None:
@@ -768,6 +779,7 @@ class BigQueryColumnCheckOperator(
         self.use_legacy_sql = _resolve_use_legacy_sql(use_legacy_sql)
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.labels = labels
         self.project_id = project_id
 
@@ -861,7 +873,8 @@ class BigQueryTableCheckOperator(
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param labels: a dictionary containing labels for the table, passed to BigQuery
     :param encryption_configuration: (Optional) Custom encryption configuration (e.g., Cloud KMS keys).
     :param project_id: Google Cloud Project where the job is running
@@ -888,6 +901,7 @@ class BigQueryTableCheckOperator(
         use_legacy_sql: bool | ArgNotSet = NOTSET,
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         labels: dict | None = None,
         encryption_configuration: dict | None = None,
         **kwargs,
@@ -897,6 +911,7 @@ class BigQueryTableCheckOperator(
         self.use_legacy_sql = _resolve_use_legacy_sql(use_legacy_sql)
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.labels = labels
         self.encryption_configuration = encryption_configuration
         self.project_id = project_id
@@ -1037,7 +1052,8 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode
     :param poll_interval: (Deferrable mode only) polling period in seconds to check for the status of job.
         Defaults to 4 seconds.
@@ -1055,7 +1071,7 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
         "max_results",
         "selected_fields",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.QUERY.value
 
@@ -1073,6 +1089,7 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
         location: str | None = None,
         encryption_configuration: dict | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         poll_interval: float = 4.0,
         as_dict: bool = False,
@@ -1091,6 +1108,7 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.encryption_configuration = encryption_configuration
         self.deferrable = deferrable
         self.poll_interval = poll_interval
@@ -1137,7 +1155,7 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
 
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             use_legacy_sql=self.use_legacy_sql,
         )
 
@@ -1213,7 +1231,7 @@ class BigQueryGetDataOperator(GoogleCloudBaseOperator, _BigQueryOperatorsEncrypt
                 location=self.location or hook.location,
                 poll_interval=self.poll_interval,
                 as_dict=self.as_dict,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 selected_fields=self.selected_fields,
             ),
             method_name="execute_complete",
@@ -1275,7 +1293,8 @@ class BigQueryCreateTableOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account.
+        account from the list granting this role to the originating account.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -1285,7 +1304,7 @@ class BigQueryCreateTableOperator(GoogleCloudBaseOperator):
         "project_id",
         "gcs_schema_object",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "google_cloud_storage_conn_id",
     )
     template_fields_renderers = {"table_resource": "json"}
@@ -1304,6 +1323,7 @@ class BigQueryCreateTableOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         google_cloud_storage_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         if_exists: str = "log",
         retry: Retry | _MethodDefault = DEFAULT,
         timeout: float | None = None,
@@ -1320,6 +1340,7 @@ class BigQueryCreateTableOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.google_cloud_storage_conn_id = google_cloud_storage_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
         self._table: Table | None = None
@@ -1328,13 +1349,13 @@ class BigQueryCreateTableOperator(GoogleCloudBaseOperator):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         if self.gcs_schema_object:
             gcs_bucket, gcs_object = _parse_gcs_url(self.gcs_schema_object)
             gcs_hook = GCSHook(
                 gcp_conn_id=self.google_cloud_storage_conn_id,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             )
             schema_fields_string = gcs_hook.download_as_byte_array(gcs_bucket, gcs_object).decode("utf-8")
             schema_fields = json.loads(schema_fields_string)
@@ -1442,14 +1463,15 @@ class BigQueryDeleteDatasetOperator(GoogleCloudBaseOperator):
             gcp_conn_id="_my_gcp_conn_",
             task_id="Deletetemp",
             dag=dag,
-        )
+        )    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "dataset_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.DATASET.value
 
@@ -1461,6 +1483,7 @@ class BigQueryDeleteDatasetOperator(GoogleCloudBaseOperator):
         delete_contents: bool = False,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.dataset_id = dataset_id
@@ -1468,6 +1491,7 @@ class BigQueryDeleteDatasetOperator(GoogleCloudBaseOperator):
         self.delete_contents = delete_contents
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
         super().__init__(**kwargs)
 
@@ -1476,7 +1500,7 @@ class BigQueryDeleteDatasetOperator(GoogleCloudBaseOperator):
 
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         bq_hook.delete_dataset(
@@ -1508,7 +1532,8 @@ class BigQueryCreateEmptyDatasetOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param if_exists: What should Airflow do if the dataset exists. If set to `log`, the TI will be passed to
         success and an error message will be logged. Set to `ignore` to ignore the error, set to `fail` to
         fail the TI, and set to `skip` to skip it.
@@ -1529,7 +1554,7 @@ class BigQueryCreateEmptyDatasetOperator(GoogleCloudBaseOperator):
         "project_id",
         "dataset_reference",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"dataset_reference": "json"}
     ui_color = BigQueryUIColors.DATASET.value
@@ -1544,6 +1569,7 @@ class BigQueryCreateEmptyDatasetOperator(GoogleCloudBaseOperator):
         location: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         if_exists: str = "log",
         exists_ok: bool | None = None,
         **kwargs,
@@ -1554,6 +1580,7 @@ class BigQueryCreateEmptyDatasetOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.dataset_reference = dataset_reference or {}
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         if exists_ok is not None:
             warnings.warn(
                 "`exists_ok` parameter is deprecated, please use `if_exists`",
@@ -1570,7 +1597,7 @@ class BigQueryCreateEmptyDatasetOperator(GoogleCloudBaseOperator):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         try:
@@ -1627,14 +1654,15 @@ class BigQueryGetDatasetOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "dataset_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.DATASET.value
     operator_extra_links = (BigQueryDatasetLink(),)
@@ -1646,18 +1674,20 @@ class BigQueryGetDatasetOperator(GoogleCloudBaseOperator):
         project_id: str = PROVIDE_PROJECT_ID,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.dataset_id = dataset_id
         self.project_id = project_id
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         super().__init__(**kwargs)
 
     def execute(self, context: Context):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         self.log.info("Start getting dataset: %s:%s", self.project_id, self.dataset_id)
@@ -1692,14 +1722,15 @@ class BigQueryGetDatasetTablesOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "dataset_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.DATASET.value
 
@@ -1711,6 +1742,7 @@ class BigQueryGetDatasetTablesOperator(GoogleCloudBaseOperator):
         max_results: int | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.dataset_id = dataset_id
@@ -1718,12 +1750,13 @@ class BigQueryGetDatasetTablesOperator(GoogleCloudBaseOperator):
         self.max_results = max_results
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         super().__init__(**kwargs)
 
     def execute(self, context: Context):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         return bq_hook.get_dataset_tables(
@@ -1762,7 +1795,8 @@ class BigQueryUpdateTableOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -1770,7 +1804,7 @@ class BigQueryUpdateTableOperator(GoogleCloudBaseOperator):
         "table_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"table_resource": "json"}
     ui_color = BigQueryUIColors.TABLE.value
@@ -1786,6 +1820,7 @@ class BigQueryUpdateTableOperator(GoogleCloudBaseOperator):
         project_id: str = PROVIDE_PROJECT_ID,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.dataset_id = dataset_id
@@ -1795,13 +1830,14 @@ class BigQueryUpdateTableOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.table_resource = table_resource
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self._table: dict | None = None
         super().__init__(**kwargs)
 
     def execute(self, context: Context):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         # Save table as attribute for further use by OpenLineage
@@ -1870,14 +1906,15 @@ class BigQueryUpdateDatasetOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "dataset_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"dataset_resource": "json"}
     ui_color = BigQueryUIColors.DATASET.value
@@ -1892,6 +1929,7 @@ class BigQueryUpdateDatasetOperator(GoogleCloudBaseOperator):
         project_id: str = PROVIDE_PROJECT_ID,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.dataset_id = dataset_id
@@ -1900,12 +1938,13 @@ class BigQueryUpdateDatasetOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.dataset_resource = dataset_resource
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         super().__init__(**kwargs)
 
     def execute(self, context: Context):
         bq_hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         fields = self.fields or list(self.dataset_resource.keys())
 
@@ -1947,13 +1986,14 @@ class BigQueryDeleteTableOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "deletion_dataset_table",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.TABLE.value
 
@@ -1965,6 +2005,7 @@ class BigQueryDeleteTableOperator(GoogleCloudBaseOperator):
         ignore_if_missing: bool = False,
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1974,6 +2015,7 @@ class BigQueryDeleteTableOperator(GoogleCloudBaseOperator):
         self.ignore_if_missing = ignore_if_missing
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.hook: BigQueryHook | None = None
 
     def execute(self, context: Context) -> None:
@@ -1982,7 +2024,7 @@ class BigQueryDeleteTableOperator(GoogleCloudBaseOperator):
         self.hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.hook.delete_table(table_id=self.deletion_dataset_table, not_found_ok=self.ignore_if_missing)
 
@@ -2041,14 +2083,15 @@ class BigQueryUpsertTableOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
         "dataset_id",
         "table_resource",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "project_id",
     )
     template_fields_renderers = {"table_resource": "json"}
@@ -2064,6 +2107,7 @@ class BigQueryUpsertTableOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -2074,6 +2118,7 @@ class BigQueryUpsertTableOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self._table: dict | None = None
 
     def execute(self, context: Context) -> None:
@@ -2081,7 +2126,7 @@ class BigQueryUpsertTableOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         # Save table as attribute for further use by OpenLineage
         self._table = hook.run_table_upsert(
@@ -2167,7 +2212,8 @@ class BigQueryUpdateTableSchemaOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -2176,7 +2222,7 @@ class BigQueryUpdateTableSchemaOperator(GoogleCloudBaseOperator):
         "table_id",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"schema_fields_updates": "json"}
     ui_color = BigQueryUIColors.TABLE.value
@@ -2192,6 +2238,7 @@ class BigQueryUpdateTableSchemaOperator(GoogleCloudBaseOperator):
         project_id: str = PROVIDE_PROJECT_ID,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         location: str | None = None,
         **kwargs,
     ) -> None:
@@ -2202,13 +2249,14 @@ class BigQueryUpdateTableSchemaOperator(GoogleCloudBaseOperator):
         self.project_id = project_id
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.location = location
         self._table: dict | None = None
         super().__init__(**kwargs)
 
     def execute(self, context: Context):
         bq_hook = BigQueryHook(
-            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, location=self.location
+            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id, location=self.location
         )
 
         # Save table as attribute for further use by OpenLineage
@@ -2298,7 +2346,8 @@ class BigQueryInsertJobOperator(
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param cancel_on_kill: Flag which indicates whether cancel the hook's job or not, when on_kill is called
     :param result_retry: How to retry the `result` call that retrieves rows
     :param result_timeout: The number of seconds to wait for `result` method before using `result_retry`
@@ -2316,7 +2365,7 @@ class BigQueryInsertJobOperator(
         "configuration",
         "job_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "project_id",
     )
     template_ext: Sequence[str] = (
@@ -2338,6 +2387,7 @@ class BigQueryInsertJobOperator(
         reattach_states: set[str] | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         cancel_on_kill: bool = True,
         result_retry: Retry = DEFAULT_RETRY,
         result_timeout: float | None = None,
@@ -2360,6 +2410,7 @@ class BigQueryInsertJobOperator(
         self.force_rerun = force_rerun
         self.reattach_states: set[str] = reattach_states or set()
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.cancel_on_kill = cancel_on_kill
         self.result_retry = result_retry
         self.result_timeout = result_timeout
@@ -2513,7 +2564,7 @@ class BigQueryInsertJobOperator(
                     project_id=self.project_id,
                     location=job.location or self.location or self.hook.location,  # type: ignore[union-attr]
                     poll_interval=self.poll_interval,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     cancel_on_kill=self.cancel_on_kill,
                 ),
                 method_name="execute_complete",
@@ -2526,7 +2577,7 @@ class BigQueryInsertJobOperator(
         """Submit the job (or reattach per today's Conflict/reattach_states/429 rules) and return its id."""
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.hook = hook
         if self.project_id is None:
@@ -2616,7 +2667,7 @@ class BigQueryInsertJobOperator(
         # resolved there must be resolved here too.
         if self.hook is None:
             self.hook = BigQueryHook(
-                gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain
+                gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id
             )
         if self.project_id is None:
             self.project_id = self.hook.project_id
@@ -2733,7 +2784,8 @@ class BigQueryCreateRoutineOperator(GoogleCloudBaseOperator):
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
     :param location: The location of the BigQuery dataset.
     :param impersonation_chain: Optional service account to impersonate using short-term
-        credentials, or chained list of accounts.
+        credentials, or chained list of accounts.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param retry: A retry object used to retry requests.
     :param timeout: The amount of time, in seconds, to wait for the request.
     """
@@ -2746,7 +2798,7 @@ class BigQueryCreateRoutineOperator(GoogleCloudBaseOperator):
         "arguments",
         "routine_resource",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"routine_resource": "json", "arguments": "json"}
     template_ext: Sequence[str] = (".sql",)
@@ -2776,6 +2828,7 @@ class BigQueryCreateRoutineOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         retry: Retry = DEFAULT_RETRY,
         timeout: float | None = None,
         **kwargs,
@@ -2804,6 +2857,7 @@ class BigQueryCreateRoutineOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
 
@@ -2841,7 +2895,7 @@ class BigQueryCreateRoutineOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         resource = self._build_resource()
         self.log.info(
@@ -2883,7 +2937,8 @@ class BigQueryUpdateRoutineOperator(GoogleCloudBaseOperator):
     :param project_id: Optional. The project that owns the dataset.
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
     :param location: The location of the BigQuery dataset.
-    :param impersonation_chain: Optional service account to impersonate.
+    :param impersonation_chain: Optional service account to impersonate.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param retry: A retry object used to retry requests.
     :param timeout: The amount of time, in seconds, to wait for the request.
     """
@@ -2894,7 +2949,7 @@ class BigQueryUpdateRoutineOperator(GoogleCloudBaseOperator):
         "routine_id",
         "routine_resource",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     template_fields_renderers = {"routine_resource": "json"}
     template_ext: Sequence[str] = (".json", ".sql")
@@ -2911,6 +2966,7 @@ class BigQueryUpdateRoutineOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         retry: Retry = DEFAULT_RETRY,
         timeout: float | None = None,
         **kwargs,
@@ -2926,6 +2982,7 @@ class BigQueryUpdateRoutineOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
 
@@ -2933,7 +2990,7 @@ class BigQueryUpdateRoutineOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.log.info(
             "Updating routine %s.%s.%s (fields=%s)",
@@ -2969,7 +3026,8 @@ class BigQueryDeleteRoutineOperator(GoogleCloudBaseOperator):
         Defaults to ``False``.
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
     :param location: The location of the BigQuery dataset.
-    :param impersonation_chain: Optional service account to impersonate.
+    :param impersonation_chain: Optional service account to impersonate.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param retry: A retry object used to retry requests.
     :param timeout: The amount of time, in seconds, to wait for the request.
     """
@@ -2979,7 +3037,7 @@ class BigQueryDeleteRoutineOperator(GoogleCloudBaseOperator):
         "dataset_id",
         "routine_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.TABLE.value
 
@@ -2993,6 +3051,7 @@ class BigQueryDeleteRoutineOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         retry: Retry = DEFAULT_RETRY,
         timeout: float | None = None,
         **kwargs,
@@ -3005,6 +3064,7 @@ class BigQueryDeleteRoutineOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
 
@@ -3012,7 +3072,7 @@ class BigQueryDeleteRoutineOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.log.info(
             "Deleting routine %s.%s.%s",
@@ -3043,7 +3103,8 @@ class BigQueryGetRoutineOperator(GoogleCloudBaseOperator):
     :param project_id: Optional. The project that owns the dataset.
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
     :param location: The location of the BigQuery dataset.
-    :param impersonation_chain: Optional service account to impersonate.
+    :param impersonation_chain: Optional service account to impersonate.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param retry: A retry object used to retry requests.
     :param timeout: The amount of time, in seconds, to wait for the request.
     """
@@ -3053,7 +3114,7 @@ class BigQueryGetRoutineOperator(GoogleCloudBaseOperator):
         "dataset_id",
         "routine_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.TABLE.value
 
@@ -3066,6 +3127,7 @@ class BigQueryGetRoutineOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         retry: Retry = DEFAULT_RETRY,
         timeout: float | None = None,
         **kwargs,
@@ -3077,6 +3139,7 @@ class BigQueryGetRoutineOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
 
@@ -3084,7 +3147,7 @@ class BigQueryGetRoutineOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.log.info(
             "Fetching routine %s.%s.%s",
@@ -3120,7 +3183,8 @@ class BigQueryListRoutinesOperator(GoogleCloudBaseOperator):
     :param page_token: Optional. Token identifying a page of results to return.
     :param gcp_conn_id: The connection ID used to connect to Google Cloud.
     :param location: The location of the BigQuery dataset.
-    :param impersonation_chain: Optional service account to impersonate.
+    :param impersonation_chain: Optional service account to impersonate.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param retry: A retry object used to retry requests.
     :param timeout: The amount of time, in seconds, to wait for the request.
     """
@@ -3129,7 +3193,7 @@ class BigQueryListRoutinesOperator(GoogleCloudBaseOperator):
         "project_id",
         "dataset_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = BigQueryUIColors.TABLE.value
 
@@ -3143,6 +3207,7 @@ class BigQueryListRoutinesOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         location: str | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         retry: Retry = DEFAULT_RETRY,
         timeout: float | None = None,
         **kwargs,
@@ -3155,6 +3220,7 @@ class BigQueryListRoutinesOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.location = location
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.retry = retry
         self.timeout = timeout
 
@@ -3162,7 +3228,7 @@ class BigQueryListRoutinesOperator(GoogleCloudBaseOperator):
         hook = BigQueryHook(
             gcp_conn_id=self.gcp_conn_id,
             location=self.location,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.log.info(
             "Listing routines in %s.%s",

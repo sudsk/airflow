@@ -85,7 +85,8 @@ class DataflowConfiguration:
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
 
         .. warning::
             This option requires Apache Beam 2.39.0 or newer.
@@ -146,6 +147,7 @@ class DataflowConfiguration:
         gcp_conn_id: str = "google_cloud_default",
         poll_sleep: int = 10,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         drain_pipeline: bool = False,
         cancel_timeout: int | None = 5 * 60,
         wait_until_finished: bool | None = None,
@@ -161,6 +163,7 @@ class DataflowConfiguration:
         self.gcp_conn_id = gcp_conn_id
         self.poll_sleep = poll_sleep
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.drain_pipeline = drain_pipeline
         self.cancel_timeout = cancel_timeout
         self.wait_until_finished = wait_until_finished
@@ -205,7 +208,8 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param environment: Optional, Map of job runtime environment options.
 
         .. seealso::
@@ -311,7 +315,7 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
         "project_id",
         "location",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "environment",
         "dataflow_default_options",
     )
@@ -331,6 +335,7 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         poll_sleep: int = 10,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         environment: dict | None = None,
         cancel_timeout: int | None = 10 * 60,
         wait_until_finished: bool | None = None,
@@ -353,6 +358,7 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
         self.gcp_conn_id = gcp_conn_id
         self.poll_sleep = poll_sleep
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.environment = environment
         self.cancel_timeout = cancel_timeout
         self.wait_until_finished = wait_until_finished
@@ -380,7 +386,7 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
         hook = DataflowHook(
             gcp_conn_id=self.gcp_conn_id,
             poll_sleep=self.poll_sleep,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             cancel_timeout=self.cancel_timeout,
             wait_until_finished=self.wait_until_finished,
             expected_terminal_state=self.expected_terminal_state,
@@ -440,7 +446,7 @@ class DataflowTemplatedJobStartOperator(GoogleCloudBaseOperator):
                 location=self.location,
                 gcp_conn_id=self.gcp_conn_id,
                 poll_sleep=self.poll_sleep,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 cancel_timeout=self.cancel_timeout,
                 cancel_on_kill=self.cancel_on_kill,
             ),
@@ -532,7 +538,8 @@ class DataflowStartFlexTemplateOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param deferrable: Run operator in the deferrable mode.
     :param cancel_on_kill: If True (default), cancel the Dataflow job when the task is killed,
         both while the operator is running and, for a deferred task, while it waits in the
@@ -558,6 +565,7 @@ class DataflowStartFlexTemplateOperator(GoogleCloudBaseOperator):
         cancel_timeout: int | None = 10 * 60,
         wait_until_finished: bool | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
         append_job_name: bool = True,
         expected_terminal_state: str | None = None,
@@ -577,6 +585,7 @@ class DataflowStartFlexTemplateOperator(GoogleCloudBaseOperator):
         self.wait_until_finished = wait_until_finished
         self.job: dict[str, str] | None = None
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.deferrable = deferrable
         self.expected_terminal_state = expected_terminal_state
         self.append_job_name = append_job_name
@@ -603,7 +612,7 @@ class DataflowStartFlexTemplateOperator(GoogleCloudBaseOperator):
             drain_pipeline=self.drain_pipeline,
             cancel_timeout=self.cancel_timeout,
             wait_until_finished=self.wait_until_finished,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             expected_terminal_state=self.expected_terminal_state,
         )
         return hook
@@ -645,7 +654,7 @@ class DataflowStartFlexTemplateOperator(GoogleCloudBaseOperator):
                 location=self.location,
                 gcp_conn_id=self.gcp_conn_id,
                 poll_sleep=self.poll_sleep,
-                impersonation_chain=self.impersonation_chain,
+                impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                 cancel_timeout=self.cancel_timeout,
                 drain_pipeline=self.drain_pipeline,
                 cancel_on_kill=self.cancel_on_kill,
@@ -736,7 +745,8 @@ class DataflowStartYamlJobOperator(GoogleCloudBaseOperator):
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
         account from the list granting this role to the originating account (templated).
-    :return: Dictionary containing the job's data.
+    :return: Dictionary containing the job's data.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -770,6 +780,7 @@ class DataflowStartYamlJobOperator(GoogleCloudBaseOperator):
         jinja_variables: dict[str, str] | None = None,
         options: dict[str, Any] | None = None,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         cancel_on_kill: bool = True,
         **kwargs,
     ) -> None:
@@ -789,6 +800,7 @@ class DataflowStartYamlJobOperator(GoogleCloudBaseOperator):
         self.options = options
         self.jinja_variables = jinja_variables
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.job_id: str | None = None
 
     def execute(self, context: Context) -> dict[str, Any]:
@@ -816,7 +828,7 @@ class DataflowStartYamlJobOperator(GoogleCloudBaseOperator):
                     poll_sleep=self.poll_sleep,
                     cancel_timeout=self.cancel_timeout,
                     expected_terminal_state=self.expected_terminal_state,
-                    impersonation_chain=self.impersonation_chain,
+                    impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
                     drain_pipeline=self.drain_pipeline,
                     cancel_on_kill=self.cancel_on_kill,
                 ),
@@ -863,7 +875,7 @@ class DataflowStartYamlJobOperator(GoogleCloudBaseOperator):
         return DataflowHook(
             gcp_conn_id=self.gcp_conn_id,
             poll_sleep=self.poll_sleep,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             drain_pipeline=self.drain_pipeline,
             cancel_timeout=self.cancel_timeout,
             expected_terminal_state=self.expected_terminal_state,
@@ -902,7 +914,8 @@ class DataflowStopJobOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param drain_pipeline: Optional, set to False if want to stop streaming job by canceling it
         instead of draining. See: https://cloud.google.com/dataflow/docs/guides/stopping-a-pipeline
     :param stop_timeout: wait time in seconds for successful job canceling/draining
@@ -911,7 +924,7 @@ class DataflowStopJobOperator(GoogleCloudBaseOperator):
     template_fields = [
         "job_id",
         "project_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "gcp_conn_id",
     ]
 
@@ -924,6 +937,7 @@ class DataflowStopJobOperator(GoogleCloudBaseOperator):
         gcp_conn_id: str = "google_cloud_default",
         poll_sleep: int = 10,
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         stop_timeout: int | None = 10 * 60,
         drain_pipeline: bool = True,
         **kwargs,
@@ -937,6 +951,7 @@ class DataflowStopJobOperator(GoogleCloudBaseOperator):
         self.location = location
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.hook: DataflowHook | None = None
         self.drain_pipeline = drain_pipeline
 
@@ -944,7 +959,7 @@ class DataflowStopJobOperator(GoogleCloudBaseOperator):
         self.dataflow_hook = DataflowHook(
             gcp_conn_id=self.gcp_conn_id,
             poll_sleep=self.poll_sleep,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
             cancel_timeout=self.stop_timeout,
             drain_pipeline=self.drain_pipeline,
         )
@@ -986,7 +1001,8 @@ class DataflowCreatePipelineOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
 
         .. warning::
             This option requires Apache Beam 2.39.0 or newer.
@@ -1006,6 +1022,7 @@ class DataflowCreatePipelineOperator(GoogleCloudBaseOperator):
         location: str = DEFAULT_DATAFLOW_LOCATION,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1015,6 +1032,7 @@ class DataflowCreatePipelineOperator(GoogleCloudBaseOperator):
         self.location = location
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.dataflow_hook: DataflowHook | None = None
 
         self.pipeline_name = self.body["name"].split("/")[-1] if self.body else None
@@ -1041,7 +1059,7 @@ class DataflowCreatePipelineOperator(GoogleCloudBaseOperator):
 
         self.dataflow_hook = DataflowHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         self.body["pipelineSources"] = {"airflow": "airflow"}
         try:
@@ -1090,7 +1108,8 @@ class DataflowRunPipelineOperator(GoogleCloudBaseOperator):
         Service Account Token Creator IAM role to the directly preceding identity, with first
         account from the list granting this role to the originating account (templated).
 
-    Returns the created Job in JSON representation.
+    Returns the created Job in JSON representation.    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = ("gcp_conn_id",)
@@ -1104,6 +1123,7 @@ class DataflowRunPipelineOperator(GoogleCloudBaseOperator):
         location: str = DEFAULT_DATAFLOW_LOCATION,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1113,11 +1133,12 @@ class DataflowRunPipelineOperator(GoogleCloudBaseOperator):
         self.location = location
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.dataflow_hook: DataflowHook | None = None
 
     def execute(self, context: Context):
         self.dataflow_hook = DataflowHook(
-            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain
+            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id
         )
 
         if self.pipeline_name is None:
@@ -1166,7 +1187,8 @@ class DataflowDeletePipelineOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = ("gcp_conn_id",)
@@ -1178,6 +1200,7 @@ class DataflowDeletePipelineOperator(GoogleCloudBaseOperator):
         location: str = DEFAULT_DATAFLOW_LOCATION,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1187,12 +1210,13 @@ class DataflowDeletePipelineOperator(GoogleCloudBaseOperator):
         self.location = location
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.dataflow_hook: DataflowHook | None = None
         self.response: dict | None = None
 
     def execute(self, context: Context):
         self.dataflow_hook = DataflowHook(
-            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain
+            gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id
         )
 
         if self.pipeline_name is None:

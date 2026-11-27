@@ -93,7 +93,8 @@ class GCSCreateBucketOperator(GoogleCloudBaseOperator):
         account from the list granting this role to the originating account (templated).
 
     The following Operator would create a new bucket ``test-bucket``
-    with ``MULTI_REGIONAL`` storage class in ``EU`` region
+    with ``MULTI_REGIONAL`` storage class in ``EU`` region    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
 
     .. code-block:: python
 
@@ -114,7 +115,7 @@ class GCSCreateBucketOperator(GoogleCloudBaseOperator):
         "location",
         "project_id",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     ui_color = "#f0eee4"
     operator_extra_links = (StorageLink(),)
@@ -130,6 +131,7 @@ class GCSCreateBucketOperator(GoogleCloudBaseOperator):
         labels: dict | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -141,11 +143,12 @@ class GCSCreateBucketOperator(GoogleCloudBaseOperator):
         self.labels = labels
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         StorageLink.persist(
             context=context,
@@ -186,7 +189,8 @@ class GCSListObjectsOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param match_glob: (Optional) filters objects based on the glob pattern given by the string
         (e.g, ``'**/*.json'``)
 
@@ -209,7 +213,7 @@ class GCSListObjectsOperator(GoogleCloudBaseOperator):
         "delimiter",
         "match_glob",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     ui_color = "#f0eee4"
@@ -224,6 +228,7 @@ class GCSListObjectsOperator(GoogleCloudBaseOperator):
         delimiter: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         match_glob: str | None = None,
         **kwargs,
     ) -> None:
@@ -233,6 +238,7 @@ class GCSListObjectsOperator(GoogleCloudBaseOperator):
         self.delimiter = delimiter
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.match_glob = match_glob
 
     def _warn_on_deprecated_template_fields(self) -> None:
@@ -247,7 +253,7 @@ class GCSListObjectsOperator(GoogleCloudBaseOperator):
         self._warn_on_deprecated_template_fields()
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         if self.match_glob:
@@ -293,7 +299,8 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -301,7 +308,7 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
         "prefix",
         "objects",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
 
     def __init__(
@@ -313,6 +320,7 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
         ignore_error: bool = False,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         self.bucket_name = bucket_name
@@ -321,6 +329,7 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
         self.ignore_error = ignore_error
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
         if objects is None and prefix is None:
             err_message = "(Task {task_id}) Either objects or prefix should be set. Both are None.".format(
@@ -336,7 +345,7 @@ class GCSDeleteObjectsOperator(GoogleCloudBaseOperator):
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
 
         if self.objects is not None:
@@ -413,7 +422,8 @@ class GCSBucketCreateAclEntryOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     # [START gcs_bucket_create_acl_template_fields]
@@ -423,7 +433,7 @@ class GCSBucketCreateAclEntryOperator(GoogleCloudBaseOperator):
         "role",
         "user_project",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     # [END gcs_bucket_create_acl_template_fields]
     operator_extra_links = (StorageLink(),)
@@ -437,6 +447,7 @@ class GCSBucketCreateAclEntryOperator(GoogleCloudBaseOperator):
         user_project: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -446,11 +457,12 @@ class GCSBucketCreateAclEntryOperator(GoogleCloudBaseOperator):
         self.user_project = user_project
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         StorageLink.persist(
             context=context,
@@ -484,7 +496,8 @@ class GCSBucketAddIamBindingOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     # [START gcs_bucket_add_iam_binding_template_fields]
@@ -494,7 +507,7 @@ class GCSBucketAddIamBindingOperator(GoogleCloudBaseOperator):
         "member",
         "user_project",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     # [END gcs_bucket_add_iam_binding_template_fields]
     operator_extra_links = (StorageLink(),)
@@ -508,6 +521,7 @@ class GCSBucketAddIamBindingOperator(GoogleCloudBaseOperator):
         user_project: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -517,11 +531,12 @@ class GCSBucketAddIamBindingOperator(GoogleCloudBaseOperator):
         self.user_project = user_project
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         StorageLink.persist(
             context=context,
@@ -575,7 +590,8 @@ class GCSObjectCreateAclEntryOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     # [START gcs_object_create_acl_template_fields]
@@ -587,7 +603,7 @@ class GCSObjectCreateAclEntryOperator(GoogleCloudBaseOperator):
         "role",
         "user_project",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     # [END gcs_object_create_acl_template_fields]
     operator_extra_links = (FileDetailsLink(),)
@@ -603,6 +619,7 @@ class GCSObjectCreateAclEntryOperator(GoogleCloudBaseOperator):
         user_project: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -614,11 +631,12 @@ class GCSObjectCreateAclEntryOperator(GoogleCloudBaseOperator):
         self.user_project = user_project
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         FileDetailsLink.persist(
             context=context,
@@ -665,7 +683,8 @@ class GCSFileTransformOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -675,7 +694,7 @@ class GCSFileTransformOperator(GoogleCloudBaseOperator):
         "destination_object",
         "transform_script",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     operator_extra_links = (FileDetailsLink(),)
 
@@ -689,6 +708,7 @@ class GCSFileTransformOperator(GoogleCloudBaseOperator):
         destination_object: str | None = None,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -701,11 +721,12 @@ class GCSFileTransformOperator(GoogleCloudBaseOperator):
         self.transform_script = transform_script
         self.output_encoding = sys.getdefaultencoding()
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         self.destination_bucket = self.destination_bucket or self.source_bucket
         self.destination_object = self.destination_object or self.source_object
-        hook = GCSHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = GCSHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
 
         with NamedTemporaryFile() as source_file, NamedTemporaryFile() as destination_file:
             self.log.info("Downloading file from %s", self.source_bucket)
@@ -1173,7 +1194,8 @@ class GCSDeleteBucketOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     :param user_project: (Optional) The identifier of the project to bill for this request.
         Required for Requester Pays buckets.
     """
@@ -1181,7 +1203,7 @@ class GCSDeleteBucketOperator(GoogleCloudBaseOperator):
     template_fields: Sequence[str] = (
         "bucket_name",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
         "user_project",
     )
 
@@ -1192,6 +1214,7 @@ class GCSDeleteBucketOperator(GoogleCloudBaseOperator):
         force: bool = True,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         user_project: str | None = None,
         **kwargs,
     ) -> None:
@@ -1201,10 +1224,11 @@ class GCSDeleteBucketOperator(GoogleCloudBaseOperator):
         self.force: bool = force
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
         self.user_project = user_project
 
     def execute(self, context: Context) -> None:
-        hook = GCSHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain)
+        hook = GCSHook(gcp_conn_id=self.gcp_conn_id, impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id)
         hook.delete_bucket(bucket_name=self.bucket_name, force=self.force, user_project=self.user_project)
 
 
@@ -1244,7 +1268,8 @@ class GCSSynchronizeBucketsOperator(GoogleCloudBaseOperator):
         the Service Account Token Creator IAM role.
         If set as a sequence, the identities from the list must grant
         Service Account Token Creator IAM role to the directly preceding identity, with first
-        account from the list granting this role to the originating account (templated).
+        account from the list granting this role to the originating account (templated).    :param quota_project_id: Optional project ID to use for quota and billing purposes.
+
     """
 
     template_fields: Sequence[str] = (
@@ -1256,7 +1281,7 @@ class GCSSynchronizeBucketsOperator(GoogleCloudBaseOperator):
         "delete_extra_files",
         "allow_overwrite",
         "gcp_conn_id",
-        "impersonation_chain",
+        "impersonation_chain", "quota_project_id",
     )
     operator_extra_links = (StorageLink(),)
 
@@ -1272,6 +1297,7 @@ class GCSSynchronizeBucketsOperator(GoogleCloudBaseOperator):
         allow_overwrite: bool = False,
         gcp_conn_id: str = "google_cloud_default",
         impersonation_chain: str | Sequence[str] | None = None,
+        quota_project_id: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -1284,11 +1310,12 @@ class GCSSynchronizeBucketsOperator(GoogleCloudBaseOperator):
         self.allow_overwrite = allow_overwrite
         self.gcp_conn_id = gcp_conn_id
         self.impersonation_chain = impersonation_chain
+        self.quota_project_id = quota_project_id
 
     def execute(self, context: Context) -> None:
         hook = GCSHook(
             gcp_conn_id=self.gcp_conn_id,
-            impersonation_chain=self.impersonation_chain,
+            impersonation_chain=self.impersonation_chain, quota_project_id=self.quota_project_id,
         )
         StorageLink.persist(
             context=context,
