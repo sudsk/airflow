@@ -18,7 +18,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import mock
 
 import pytest
@@ -552,3 +552,35 @@ class TestCloudComposerExternalTaskSensor:
         with pytest.raises(ExternalTaskFailedError):
             task.execute_complete(context={}, event={"status": "failed"})
         assert task.composer_external_task_ids == ["task_a"]
+
+    @pytest.mark.parametrize("composer_airflow_version", [2, 3])
+    def test_check_task_instances_states_out_of_window(self, composer_airflow_version):
+        task = CloudComposerExternalTaskSensor(
+            task_id="task-id",
+            project_id=TEST_PROJECT_ID,
+            region=TEST_REGION,
+            environment_id=TEST_ENVIRONMENT_ID,
+            composer_external_dag_id="test_dag_id",
+            allowed_states=["success"],
+        )
+        task._composer_airflow_version = composer_airflow_version
+
+        date_key = "execution_date" if composer_airflow_version < 3 else "logical_date"
+        task_instances = [
+            {
+                "task_id": TEST_COMPOSER_EXTERNAL_TASK_ID,
+                "dag_id": "test_dag_id",
+                "state": "success",
+                date_key: "2024-05-22T10:10:00+00:00",
+            }
+        ]
+
+        start_date = datetime(2024, 5, 23, 0, 0, 0, tzinfo=timezone.utc)
+        end_date = datetime(2024, 5, 24, 0, 0, 0, tzinfo=timezone.utc)
+
+        assert not task._check_task_instances_states(
+            task_instances=task_instances,
+            start_date=start_date,
+            end_date=end_date,
+            states=["success"],
+        )
